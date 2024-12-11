@@ -1,3 +1,11 @@
+# Used to parse a Bizagi XPDL file and create the activity sequences which are saved to a text file and 
+# passed back to the caller.
+#
+# Needed Improvements:
+# 1. Use the Transition child tag <Condition Type="CONDITION"> to note a Gateway and then get the "Name" value to use with the 
+#    simulations_metrics to get the percentages for the different paths from the Gateway.
+#
+#################################################################################################################################
 import xml.etree.ElementTree as ET
 import pandas as pd
 
