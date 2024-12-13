@@ -3,6 +3,11 @@ from xml.etree import ElementTree as ET
 import heapq
 import random
 import re
+import logging
+
+# Configure logging
+logging.basicConfig(filename='simulation_log.txt', level=logging.INFO, 
+                    format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Importing the parse_xpdl_to_sequences function
 from xpdl_parser import parse_xpdl_to_sequences
@@ -16,7 +21,10 @@ simulation_metrics = pd.read_excel(simulation_metrics_path, sheet_name=0)
 
 # Parse the XPDL file
 process_sequences = parse_xpdl_to_sequences(xpdl_file_path, "output_sequences.txt")
-print("Process Sequences:", process_sequences)
+logging.info("Process Sequences: %s", process_sequences)
+
+# Extract activity types
+activity_types = dict(zip(process_sequences['From'], process_sequences['Type']))
 
 # Map task durations and resources
 task_durations = {}
@@ -42,9 +50,9 @@ for _, row in simulation_metrics.iterrows():
         available_resources = row.get("Available Resources", 1)
         resources[row["Resource"]] = int(available_resources) if pd.notna(available_resources) else 1
 
-print("Loaded Resources:", resources)
-print("Task Resources:", task_resources)
-print("Task Durations:", task_durations)
+logging.info("Loaded Resources: %s", resources)
+logging.info("Task Resources: %s", task_resources)
+logging.info("Task Durations: %s", task_durations)
 
 # Extract token arrival metrics
 start_event_metrics = simulation_metrics[simulation_metrics["Type"] == "Start event"]
@@ -54,9 +62,9 @@ arrival_interval_minutes = int(start_event_metrics["Arrival interval"].dropna().
 # Set simulation maximum time
 max_time = 30 * 24 * 60  # 30 days in minutes
 
-print(f"Number of tokens (max_arrival_count): {max_arrival_count}")
-print(f"Arrival interval (minutes): {arrival_interval_minutes}")
-print(f"Maximum simulation time (minutes): {max_time}")
+logging.info("Number of tokens (max_arrival_count): %d", max_arrival_count)
+logging.info("Arrival interval (minutes): %d", arrival_interval_minutes)
+logging.info("Maximum simulation time (minutes): %d", max_time)
 
 # Discrete-Event Simulation
 class Event:
@@ -78,7 +86,7 @@ def discrete_event_simulation(max_arrival_count, arrival_interval_minutes, max_t
     # Schedule token arrivals
     for token_id in range(max_arrival_count):
         arrival_time = token_id * arrival_interval_minutes
-        first_task = list(process_sequences.keys())[0]
+        first_task = process_sequences.iloc[0]['From']
         heapq.heappush(event_queue, Event(arrival_time, token_id, first_task, 'start'))
 
     # Main simulation loop
@@ -89,9 +97,31 @@ def discrete_event_simulation(max_arrival_count, arrival_interval_minutes, max_t
 
         if event.event_type == 'start':
             task_name = event.task_name
-            if task_name in process_sequences:
-                next_tasks = process_sequences[task_name]
+            task_type = activity_types.get(task_name, "Unknown")
+
+            # Extract path_condition if task_type contains "CONDITION"
+            path_condition = None
+            if "CONDITION" in task_type:
+                path_condition = task_type.split("-")[1].strip().lower()
+
+            logging.info("Starting task '%s' of type '%s' at time %d.", task_name, task_type, current_time)
+
+            if task_name in process_sequences['From'].values:
+                next_tasks = process_sequences[process_sequences['From'] == task_name]['To'].tolist()
+
                 for next_task in next_tasks:
+                    if path_condition and task_type.startswith("CONDITION"):
+                        # Find the row for the Gateway
+                        gateway_row = simulation_metrics[(simulation_metrics["Name"] == task_name) &
+                                                         (simulation_metrics["Type"] == "Gateway")]
+
+                        if not gateway_row.empty:
+                            # Find the column with the matching path_condition
+                            column_name = next((col for col in gateway_row.columns if col.lower() == path_condition), None)
+                            if column_name:
+                                probability = gateway_row.iloc[0][column_name]
+                                logging.info("Probability for path '%s' in task '%s' is %s.", path_condition, task_name, probability)
+
                     if next_task in task_durations:  # Only process tasks with durations
                         task_duration = task_durations[next_task]
                         resource_type = task_resources.get(next_task, "Unspecified")
@@ -107,11 +137,11 @@ def discrete_event_simulation(max_arrival_count, arrival_interval_minutes, max_t
                                 )
                                 heapq.heappush(event_queue, Event(current_time + duration, event.token_id, next_task, 'end'))
                             else:
-                                print(f"Resource '{resource_type}' unavailable for task '{next_task}' at time {current_time}.")
+                                logging.warning("Resource '%s' unavailable for task '%s' at time %d.", resource_type, next_task, current_time)
                     else:
                         heapq.heappush(event_queue, Event(current_time, event.token_id, next_task, 'start'))  # No delay
             else:
-                print(f"End of sequence for token {event.token_id} at task {task_name}.")
+                logging.info("End of sequence for token %d at task '%s'.", event.token_id, task_name)
         elif event.event_type == 'end':
             task_name = event.task_name
             token_id = event.token_id
@@ -121,7 +151,7 @@ def discrete_event_simulation(max_arrival_count, arrival_interval_minutes, max_t
                 resource_queues[resource_type].remove(token_id)
                 resource_busy_time[resource_type] += current_time - active_tokens[token_id]['start_time']
                 active_tokens[token_id]['current_task'] = None
-                print(f"Token {token_id} completed task '{task_name}' at time {current_time}.")
+                logging.info("Token %d completed task '%s' at time %d.", token_id, task_name, current_time)
 
     utilization_metrics = {
         res: (busy_time / (resources[res] * max_time)) * 100 for res, busy_time in resource_busy_time.items()
@@ -131,6 +161,6 @@ def discrete_event_simulation(max_arrival_count, arrival_interval_minutes, max_t
 # Run the simulation
 utilization, busy_time = discrete_event_simulation(max_arrival_count, arrival_interval_minutes, max_time)
 
-# Output results
-print("Utilization Metrics:", utilization)
-print("Resource Busy Time:", busy_time)
+# Output results to log
+logging.info("Utilization Metrics: %s", utilization)
+logging.info("Resource Busy Time: %s", busy_time)

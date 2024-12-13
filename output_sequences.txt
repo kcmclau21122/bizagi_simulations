@@ -1,4 +1,24 @@
-Monthly -> Review AM using Asset Change Tracker (5.5.13.1) -> Complete /Accurate? -> Note Accuracy in Asset Change Tracker (5.5.13.2) -> Create Journal Entries? -> Create/Post Journal Entries (5.5.13.4) -> Unknown
-Monthly -> Review AM using Asset Change Tracker (5.5.13.1) -> Complete /Accurate? -> Note Accuracy in Asset Change Tracker (5.5.13.2) -> Create Journal Entries? -> Unknown
-Monthly -> Review AM using Asset Change Tracker (5.5.13.1) -> Complete /Accurate? -> Work with REO RPO to Correct (5.5.13.3) -> Note Accuracy in Asset Change Tracker (5.5.13.2) -> Create Journal Entries? -> Create/Post Journal Entries (5.5.13.4) -> Unknown
-Monthly -> Review AM using Asset Change Tracker (5.5.13.1) -> Complete /Accurate? -> Work with REO RPO to Correct (5.5.13.3) -> Note Accuracy in Asset Change Tracker (5.5.13.2) -> Create Journal Entries? -> Unknown
+Monthly -> Review AM using Asset Change Tracker (5.5.13.1) [Type: Activity Step]
+Review AM using Asset Change Tracker (5.5.13.1) -> Complete /Accurate? [Type: Activity Step]
+Complete /Accurate? -> Note Accuracy in Asset Change Tracker (5.5.13.2) [Type: CONDITION-No]
+Note Accuracy in Asset Change Tracker (5.5.13.2) -> Create Journal Entries? [Type: Activity Step]
+Create Journal Entries? -> Create/Post Journal Entries (5.5.13.4) [Type: CONDITION-No]
+Create/Post Journal Entries (5.5.13.4) -> Unknown [Type: Activity Step]
+Monthly -> Review AM using Asset Change Tracker (5.5.13.1) [Type: Activity Step]
+Review AM using Asset Change Tracker (5.5.13.1) -> Complete /Accurate? [Type: Activity Step]
+Complete /Accurate? -> Note Accuracy in Asset Change Tracker (5.5.13.2) [Type: CONDITION-No]
+Note Accuracy in Asset Change Tracker (5.5.13.2) -> Create Journal Entries? [Type: Activity Step]
+Create Journal Entries? -> Unknown [Type: CONDITION-No]
+Monthly -> Review AM using Asset Change Tracker (5.5.13.1) [Type: Activity Step]
+Review AM using Asset Change Tracker (5.5.13.1) -> Complete /Accurate? [Type: Activity Step]
+Complete /Accurate? -> Work with REO RPO to Correct (5.5.13.3) [Type: CONDITION-No]
+Work with REO RPO to Correct (5.5.13.3) -> Note Accuracy in Asset Change Tracker (5.5.13.2) [Type: Activity Step]
+Note Accuracy in Asset Change Tracker (5.5.13.2) -> Create Journal Entries? [Type: Activity Step]
+Create Journal Entries? -> Create/Post Journal Entries (5.5.13.4) [Type: CONDITION-No]
+Create/Post Journal Entries (5.5.13.4) -> Unknown [Type: Activity Step]
+Monthly -> Review AM using Asset Change Tracker (5.5.13.1) [Type: Activity Step]
+Review AM using Asset Change Tracker (5.5.13.1) -> Complete /Accurate? [Type: Activity Step]
+Complete /Accurate? -> Work with REO RPO to Correct (5.5.13.3) [Type: CONDITION-No]
+Work with REO RPO to Correct (5.5.13.3) -> Note Accuracy in Asset Change Tracker (5.5.13.2) [Type: Activity Step]
+Note Accuracy in Asset Change Tracker (5.5.13.2) -> Create Journal Entries? [Type: Activity Step]
+Create Journal Entries? -> Unknown [Type: CONDITION-No]

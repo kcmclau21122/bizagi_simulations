@@ -1,11 +1,5 @@
-# Used to parse a Bizagi XPDL file and create the activity sequences which are saved to a text file and 
-# passed back to the caller.
-#
-# Needed Improvements:
-# 1. Use the Transition child tag <Condition Type="CONDITION"> to note a Gateway and then get the "Name" value to use with the 
-#    simulations_metrics to get the percentages for the different paths from the Gateway.
-#
-#################################################################################################################################
+# BUG: Treats all CONDITION as a "No" path 
+
 import xml.etree.ElementTree as ET
 import pandas as pd
 
@@ -33,6 +27,7 @@ def parse_xpdl_to_sequences(xpdl_file_path, output_file_path):
 
     # Extract activities and transitions
     activities = {}
+    activity_types = {}
     start_event_ids = []
     end_event_ids = []
     transitions = {}
@@ -73,6 +68,25 @@ def parse_xpdl_to_sequences(xpdl_file_path, output_file_path):
             transitions[from_id] = []
         transitions[from_id].append(to_id)
 
+        # Identify activity type from the Condition tag
+        condition = transition.find("./xpdl:Condition[@Type='CONDITION']", namespaces)
+        if condition is not None and from_id in activities:
+            condition_type = condition.get("Type", "Unknown")
+            gateway_name = transition.get("Name", "Unknown")
+            if from_id not in activity_types:
+                activity_types[from_id] = []
+            activity_types[from_id].append(f"{condition_type}-{gateway_name}")
+
+    # Ensure each condition is handled separately
+    activity_conditions = {}
+    for activity_id, conditions in activity_types.items():
+        activity_conditions[activity_id] = conditions
+
+    # Default all other activities to "Activity Step"
+    for activity_id in activities:
+        if activity_id not in activity_conditions:
+            activity_conditions[activity_id] = ["Activity Step"]
+
     # Recursive function to traverse sequences
     def traverse_sequence(current_id, path, visited):
         if current_id in visited:  # Avoid infinite loops
@@ -110,14 +124,29 @@ def parse_xpdl_to_sequences(xpdl_file_path, output_file_path):
     sequence_rows = []
     for sequence in sequences:
         for i in range(len(sequence) - 1):
-            sequence_rows.append({"From": sequence[i], "To": sequence[i + 1]})
+            from_activity = sequence[i]
+            to_activity = sequence[i + 1]
+            from_id = [key for key, value in activities.items() if value == from_activity][0]
+            conditions = activity_conditions.get(from_id, ["Unknown"])
+            for condition in conditions:
+                sequence_rows.append({
+                    "From": from_activity,
+                    "To": to_activity,
+                    "Type": condition
+                })
 
     sequences_df = pd.DataFrame(sequence_rows)
 
     # Save sequences to a text file
     with open(output_file_path, 'w') as file:
         for sequence in sequences:
-            file.write(" -> ".join(sequence) + "\n")
+            for i in range(len(sequence) - 1):
+                from_activity = sequence[i]
+                to_activity = sequence[i + 1]
+                from_id = [key for key, value in activities.items() if value == from_activity][0]
+                conditions = activity_conditions.get(from_id, ["Unknown"])
+                for condition in conditions:
+                    file.write(f"{from_activity} -> {to_activity} [Type: {condition}]\n")
 
     return sequences_df
 

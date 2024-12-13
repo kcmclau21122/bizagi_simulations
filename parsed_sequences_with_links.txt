@@ -1,4 +1,0 @@
-Monthly -> Review AM using Asset Change Tracker (5.5.13.1) -> Complete /Accurate? -> Note Accuracy in Asset Change Tracker (5.5.13.2) -> Link -> Link -> Create Journal Entries? -> Create/Post Journal Entries (5.5.13.4) -> Unknown
-Monthly -> Review AM using Asset Change Tracker (5.5.13.1) -> Complete /Accurate? -> Note Accuracy in Asset Change Tracker (5.5.13.2) -> Link -> Link -> Create Journal Entries? -> Unknown
-Monthly -> Review AM using Asset Change Tracker (5.5.13.1) -> Complete /Accurate? -> Work with REO RPO to Correct (5.5.13.3) -> Note Accuracy in Asset Change Tracker (5.5.13.2) -> Link -> Link -> Create Journal Entries? -> Create/Post Journal Entries (5.5.13.4) -> Unknown
-Monthly -> Review AM using Asset Change Tracker (5.5.13.1) -> Complete /Accurate? -> Work with REO RPO to Correct (5.5.13.3) -> Note Accuracy in Asset Change Tracker (5.5.13.2) -> Link -> Link -> Create Journal Entries? -> Unknown
