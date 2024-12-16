@@ -1,3 +1,4 @@
+# BUG: Seems to only be simuating the first activity
 import pandas as pd
 import heapq
 import random
