@@ -69,6 +69,6 @@ def parse_xpdl_to_sequences(xpdl_file_path, output_file_path):
     return sequences_df
 
 # Example usage
-# xpdl_file_path = "path_to_xpdl_file.xpdl"
-# output_file_path = "output_sequences.txt"
-# parse_xpdl_to_sequences(xpdl_file_path, output_file_path)
+ #xpdl_file_path = "path_to_xpdl_file.xpdl"
+ #output_file_path = "output_sequences.txt"
+ #parse_xpdl_to_sequences(xpdl_file_path, output_file_path)
