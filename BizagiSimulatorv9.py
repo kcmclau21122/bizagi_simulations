@@ -1,84 +1,84 @@
+# Bug: Not calculating utilizations correctly, current at zero.  Also need to calculate the average time it takes to process a token
 import pandas as pd
 import heapq
 import random
 import re
 import logging
-from xpdl_parser import parse_xpdl_to_sequences  # Import the XPDL parser function
 
 # Configure logging
-logging.basicConfig(filename='simulation_log.txt', level=logging.INFO, 
+logging.basicConfig(filename='simulation_log.txt', level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
 # File paths
-xpdl_file_path = 'C:/Test Data/Bizagi/5.5_1/5.5.13 Real Property-Monthly Reviews.xpdl'  # Input XPDL file
 output_sequences_path = 'output_sequences.txt'
-simulation_metrics_path = 'C:/Test Data/Bizagi/simulation_metrics.xlsx'
+simulation_metrics_path = 'simulation_metrics.xlsx'
 
-# Run XPDL parser to generate process sequences
-logging.info("Running XPDL parser to generate output_sequences.txt...")
-parse_xpdl_to_sequences(xpdl_file_path, output_sequences_path)
+# Extract max_arrival_count and arrival_interval_minutes dynamically from simulation_metrics
+def get_simulation_parameters():
+    start_event = simulation_metrics[simulation_metrics['Type'].str.lower() == 'start']
+    if not start_event.empty:
+        max_arrival_count = int(start_event['Max arrival'].iloc[0]) if 'Max arrival' in start_event.columns else 10
+        arrival_interval_minutes = int(start_event['Arrival Interval'].iloc[0]) if 'Arrival Interval' in start_event.columns else 10
+        return max_arrival_count, arrival_interval_minutes
+    logging.warning("Start event parameters not found. Using default values.")
+    return 10, 10  # Default values if not found
+
+
+# Step 1: Read the output_sequences.txt file
+def read_output_sequences(file_path):
+    transitions = []
+    with open(file_path, 'r') as file:
+        for line in file:
+            parts = line.strip().split('->')
+            from_task = parts[0].strip()
+            to_task, type_info = parts[1].rsplit('[Type: ', 1)
+            to_task = to_task.strip()
+            type_info = type_info.rstrip(']').strip()
+            transitions.append({'From': from_task, 'To': to_task, 'Type': type_info})
+    return pd.DataFrame(transitions)
+
+# Step 2: Traverse paths to build unique sequences
+def build_paths(df):
+    paths = []
+
+    def traverse(current_task, current_path):
+        # Find all transitions from the current task
+        next_steps = df[df['From'] == current_task]
+        if next_steps.empty:
+            # No further transitions, end the current path
+            paths.append(current_path[:])
+            return
+        for _, row in next_steps.iterrows():
+            current_path.append(f"{row['From']} -> {row['To']} [Type: {row['Type']}]")
+            traverse(row['To'], current_path)
+            current_path.pop()  # Backtrack
+
+    # Start traversal from tasks with no "From"
+    start_tasks = set(df['From']) - set(df['To'])
+    for start_task in start_tasks:
+        traverse(start_task, [])
+    return paths
 
 # Load simulation metrics
 simulation_metrics = pd.read_excel(simulation_metrics_path, sheet_name=0)
-
-# Load process sequences
-process_sequences = pd.read_csv(output_sequences_path, sep='->', names=['From', 'ToType'], engine='python')
-process_sequences[['To', 'Type']] = process_sequences['ToType'].str.split('[', expand=True)
-process_sequences['Type'] = process_sequences['Type'].str.replace(r'\[Type: ', '').str.replace(r'\]', '', regex=True)
-process_sequences.drop(columns=['ToType'], inplace=True)
-
-# Map task durations and resources
-task_durations = {}
-task_resources = {}
-resources = {}
 
 # Extract probabilities for conditions
 def get_condition_probability(from_activity, condition_type):
     """
     Fetches the probability for a given CONDITION-Yes/No in the 'To' activity.
     """
-    condition_column = condition_type.split("-")[1].strip()  # Extract Yes or No from CONDITION-Yes/No
+    condition_key = condition_type.split("-")[1].strip()  # Extract Yes or No from CONDITION-Yes/No
     row = simulation_metrics.loc[simulation_metrics['Name'] == from_activity]
-    if not row.empty and condition_column in row.columns:
-        return row.iloc[0][condition_column]  # Fetch the probability value
+    if not row.empty and condition_key in row.columns:
+        return row.iloc[0][condition_key]  # Fetch the probability value
+    logging.warning("Probability for condition '%s' not found. Defaulting to 0.5.", condition_type)
     return 0.5  # Default probability if not found
 
-# Identify Start Events, End Events, and Gateways for exclusion
-excluded_task_types = {"Start event", "End event", "Gateway"}
+# Initialize resource utilization tracking
+resources = simulation_metrics['Resource'].dropna().unique()  # Unique resources
+resource_busy_time = {resource: 0 for resource in resources}  # Tracks busy time for each resource
 
-for _, row in simulation_metrics.iterrows():
-    task_name = re.sub(r'\s+', ' ', row["Name"].strip())  # Clean up task names
-    task_type = row["Type"]
-
-    if task_type not in excluded_task_types:
-        task_durations[task_name] = {
-            "min": row.get("Min Time", 0),
-            "mode": row.get("Avg Time", 0),
-            "max": row.get("Max Time", 0)
-        }
-        task_resources[task_name] = row.get("Resource", "Unspecified")
-
-        # Handle available resources
-        available_resources = row.get("Available Resources", 1)
-        resources[row["Resource"]] = int(available_resources) if pd.notna(available_resources) else 1
-
-logging.info("Loaded Resources: %s", resources)
-logging.info("Task Resources: %s", task_resources)
-logging.info("Task Durations: %s", task_durations)
-
-# Extract token arrival metrics
-start_event_metrics = simulation_metrics[simulation_metrics["Type"] == "Start event"]
-max_arrival_count = int(start_event_metrics["Max arrival count"].dropna().iloc[0])
-arrival_interval_minutes = int(start_event_metrics["Arrival interval"].dropna().iloc[0])
-
-# Set simulation maximum time
-max_time = 2 * 24 * 60  # 2 days in minutes
-
-logging.info("Number of tokens (max_arrival_count): %d", max_arrival_count)
-logging.info("Arrival interval (minutes): %d", arrival_interval_minutes)
-logging.info("Maximum simulation time (minutes): %d", max_time)
-
-# Discrete-Event Simulation
+# Step 3: Integrate with simulation
 class Event:
     def __init__(self, time, token_id, task_name, event_type):
         self.time = time
@@ -89,16 +89,18 @@ class Event:
     def __lt__(self, other):
         return self.time < other.time
 
-def discrete_event_simulation(max_arrival_count, arrival_interval_minutes, max_time):
+def discrete_event_simulation(max_arrival_count, arrival_interval_minutes, max_time, paths):
     event_queue = []
-    resource_queues = {res: [] for res in resources.keys()}
     active_tokens = {token_id: {'current_task': None, 'start_time': None} for token_id in range(max_arrival_count)}
-    resource_busy_time = {res: 0 for res in resources.keys()}  # Track busy time
+
+    # Resource tracking
+    active_resources = {resource: 0 for resource in resource_busy_time.keys()}
+    available_resources = simulation_metrics.set_index('Resource')['Available Resources'].to_dict()  # Get available resources
 
     # Schedule token arrivals
     for token_id in range(max_arrival_count):
         arrival_time = token_id * arrival_interval_minutes
-        first_task = process_sequences.iloc[0]['From']  # Start from first task in the sequence
+        first_task = paths[0][0].split(" -> ")[0]  # Start from the first task in the sequence
         heapq.heappush(event_queue, Event(arrival_time, token_id, first_task, 'start'))
 
     # Main simulation loop
@@ -107,66 +109,86 @@ def discrete_event_simulation(max_arrival_count, arrival_interval_minutes, max_t
         event = heapq.heappop(event_queue)
         current_time = event.time
 
-        # Handle task start
         if event.event_type == 'start':
             task_name = event.task_name.strip()
             active_tokens[event.token_id]['current_task'] = task_name
             active_tokens[event.token_id]['start_time'] = current_time
             logging.info("Token %d starting task '%s' at time %d.", event.token_id, task_name, current_time)
 
-            # Retrieve next possible tasks
-            next_tasks = process_sequences[process_sequences['From'].str.strip().str.lower() == task_name.lower()]
-            if next_tasks.empty:
-                logging.info("Token %d reached Stop at task '%s'.", event.token_id, task_name)
-                continue  # End path
+            # Assign resource if needed
+            resource = simulation_metrics.loc[simulation_metrics['Name'] == task_name, 'Resource'].values
+            if resource.size > 0 and pd.notna(resource[0]):
+                resource_name = resource[0]
 
-            # Evaluate and schedule next tasks
-            for _, transition in next_tasks.iterrows():
-                to_task = transition['To'].strip()
-                condition_type = transition['Type'].strip()
-
-                if to_task == "Stop":
-                    logging.info("Token %d reached Stop at task '%s'.", event.token_id, task_name)
+                # Check resource availability
+                if active_resources[resource_name] >= available_resources.get(resource_name, 1):
+                    # Wait if no resource is available
+                    logging.info("Token %d waiting for resource '%s' at time %d.", event.token_id, resource_name, current_time)
+                    heapq.heappush(event_queue, Event(current_time + 1, event.token_id, task_name, 'start'))
                     continue
 
-                # Handle CONDITION transitions
-                if condition_type.startswith("CONDITION"):
-                    probability = get_condition_probability(task_name, condition_type)
-                    if random.random() > probability:
-                        logging.info("Token %d skipped path '%s' due to condition '%s' with probability %.2f.",
-                                     event.token_id, to_task, condition_type, probability)
-                        continue  # Skip this path based on probability
+                # Use the resource
+                active_resources[resource_name] += 1
+                active_tokens[event.token_id]['resource_name'] = resource_name  # Track resource assigned
+                logging.info("Resource '%s' is being used by Token %d.", resource_name, event.token_id)
 
-                # Schedule next task
-                if to_task in task_durations:
-                    duration = random.triangular(
-                        task_durations[to_task]["min"],
-                        task_durations[to_task]["max"],
-                        task_durations[to_task]["mode"]
-                    )
-                    heapq.heappush(event_queue, Event(current_time + duration, event.token_id, to_task, 'start'))
-                    logging.info("Token %d scheduled next task '%s' at time %.2f.", event.token_id, to_task, current_time + duration)
-                else:
-                    logging.info("Token %d directly moved to task '%s'.", event.token_id, to_task)
+            # Find the next task(s) in the paths
+            for path in paths:
+                for segment in path:
+                    if segment.startswith(f"{task_name} ->"):
+                        to_task, type_info = re.match(r".+ -> (.+) \[Type: (.+)\]", segment).groups()
+                        if type_info.startswith("CONDITION"):
+                            # Handle conditional transitions
+                            probability = get_condition_probability(task_name, type_info)
+                            if random.random() <= probability:
+                                heapq.heappush(event_queue, Event(current_time + 1, event.token_id, to_task, 'start'))
+                                logging.info(
+                                    "Token %d took conditional path '%s' with probability %.2f.",
+                                    event.token_id, to_task, probability
+                                )
+                        else:
+                            # Handle non-conditional transitions
+                            heapq.heappush(event_queue, Event(current_time + 1, event.token_id, to_task, 'start'))
+                            logging.info(
+                                "Token %d scheduled non-conditional next task '%s'.",
+                                event.token_id, to_task
+                            )
+                        break
 
-        # Handle task end
         elif event.event_type == 'end':
-            task_name = event.task_name
-            token_id = event.token_id
-            resource_type = task_resources.get(task_name)
+            # Release resource after task completion
+            task_name = event.task_name.strip()
+            resource_name = active_tokens[event.token_id].get('resource_name')
+            if resource_name:
+                duration = current_time - active_tokens[event.token_id]['start_time']
+                resource_busy_time[resource_name] += duration  # Increment busy time by task duration
+                active_resources[resource_name] -= 1  # Free the resource
+                logging.info("Resource '%s' released by Token %d after %.2f minutes.", resource_name, event.token_id, duration)
 
-            if resource_type and resource_type in resource_queues:
-                resource_queues[resource_type].remove(token_id)
-                resource_busy_time[resource_type] += current_time - active_tokens[token_id]['start_time']
-                logging.info("Token %d completed task '%s' at time %d.", token_id, task_name, current_time)
+    # Calculate and log resource utilization
+    total_simulation_time = max_time
+    for resource, busy_time in resource_busy_time.items():
+        utilization = (busy_time / total_simulation_time) * 100
+        print(f"Resource {resource} utilization: {utilization:.2f}%")
+        logging.info("Resource %s utilization: %.2f%%", resource, utilization)
 
-    return resource_busy_time
+    return active_tokens
 
 
+def main():
+    df = read_output_sequences(output_sequences_path)
+    paths = build_paths(df)
 
-# Run the simulation
-busy_time = discrete_event_simulation(max_arrival_count, arrival_interval_minutes, max_time)
+    # Fetch parameters from simulation metrics
+    max_arrival_count, arrival_interval_minutes = get_simulation_parameters()
 
-# Log final resource usage
-logging.info("Resource Busy Time: %s", busy_time)
-print("Simulation Complete. Check 'simulation_log.txt' for detailed logs.")
+    # Use total simulation time (example: 120 minutes or other suitable value)
+    max_time = 120  # Example value
+
+    # Run the simulation
+    active_tokens = discrete_event_simulation(max_arrival_count, arrival_interval_minutes, max_time, paths)
+
+    print("Simulation complete. Check simulation_log.txt for detailed logs.")
+
+if __name__ == "__main__":
+    main()
