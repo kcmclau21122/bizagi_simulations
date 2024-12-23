@@ -1,4 +1,4 @@
-# Bug: Not calculating utilizations correctly, current at zero.  Also need to calculate the average time it takes to process a token
+# Bug: Not calculating utilizations correctly, current at zero; need to calculate the avg time to process a token; not reading probabilities from sheet
 import pandas as pd
 import heapq
 import random
@@ -22,7 +22,6 @@ def get_simulation_parameters():
         return max_arrival_count, arrival_interval_minutes
     logging.warning("Start event parameters not found. Using default values.")
     return 10, 10  # Default values if not found
-
 
 # Step 1: Read the output_sequences.txt file
 def read_output_sequences(file_path):
@@ -173,7 +172,6 @@ def discrete_event_simulation(max_arrival_count, arrival_interval_minutes, max_t
         logging.info("Resource %s utilization: %.2f%%", resource, utilization)
 
     return active_tokens
-
 
 def main():
     df = read_output_sequences(output_sequences_path)
