@@ -1,4 +1,4 @@
-# Bug: Not calculating utilizations correctly, current at zero; need to calculate the avg time to process a token; not reading probabilities from sheet
+# Bug: Not calculating utilizations correctly, current at zero at the end; need to calculate the avg time to process a token
 import pandas as pd
 import heapq
 import random
@@ -11,15 +11,27 @@ logging.basicConfig(filename='simulation_log.txt', level=logging.INFO,
 
 # File paths
 output_sequences_path = 'output_sequences.txt'
-simulation_metrics_path = 'simulation_metrics.xlsx'
+simulation_metrics_path = 'C:/Test Data/Bizagi/simulation_metrics.xlsx'
 
 # Extract max_arrival_count and arrival_interval_minutes dynamically from simulation_metrics
 def get_simulation_parameters():
-    start_event = simulation_metrics[simulation_metrics['Type'].str.lower() == 'start']
+   # Ensure 'Type' is compared in a case-insensitive manner
+    start_event = simulation_metrics[simulation_metrics['Type'].str.lower() == 'start event']
+    
     if not start_event.empty:
-        max_arrival_count = int(start_event['Max arrival'].iloc[0]) if 'Max arrival' in start_event.columns else 10
-        arrival_interval_minutes = int(start_event['Arrival Interval'].iloc[0]) if 'Arrival Interval' in start_event.columns else 10
+        # Access columns in a case-insensitive manner
+        max_arrival_count = (
+            int(start_event['Max arrival'].iloc[0]) 
+            if 'max arrival' in map(str.lower, start_event.columns) 
+            else 10
+        )
+        arrival_interval_minutes = (
+            int(start_event['Arrival Interval'].iloc[0]) 
+            if 'arrival interval' in map(str.lower, start_event.columns) 
+            else 10
+        )
         return max_arrival_count, arrival_interval_minutes
+    
     logging.warning("Start event parameters not found. Using default values.")
     return 10, 10  # Default values if not found
 
@@ -60,6 +72,7 @@ def build_paths(df):
 
 # Load simulation metrics
 simulation_metrics = pd.read_excel(simulation_metrics_path, sheet_name=0)
+print('simulation_metrics=', simulation_metrics)
 
 # Extract probabilities for conditions
 def get_condition_probability(from_activity, condition_type):
