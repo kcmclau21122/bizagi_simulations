@@ -1,4 +1,4 @@
-# Bug: Processing times and utilizations not being calculated correctly.  Appears a token is starting and/or finishing an activity more than once
+# Bug: min_time = int(row['Min Time'].iloc[0]) ValueError: cannot convert float NaN to integer
 import pandas as pd
 import heapq
 import random
@@ -6,13 +6,19 @@ import re
 import logging
 import os
 from datetime import datetime, timedelta
+import pandas as pd
+import openpyxl
 
 # Importing the parse_xpdl_to_sequences function
 from xpdl_parser import parse_xpdl_to_sequences
 
 # Configure logging
-logging.basicConfig(filename='simulation_log.txt', level=logging.INFO,
-                    format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    filename='simulation_log.txt',
+    filemode='w',  # Overwrite the log file
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 
 
 class Event:
@@ -65,6 +71,53 @@ def read_output_sequences(file_path):
             transitions.append({'From': from_task, 'To': to_task, 'Type': type_info})
     return pd.DataFrame(transitions)
 
+def save_simulation_report(activity_processing_times, resource_utilization, tokens_completed, xpdl_file_path):
+    import os
+    base_filename = os.path.splitext(os.path.basename(xpdl_file_path))[0]
+    output_path = f"{base_filename}_results.xlsx"
+
+    # Prepare activity processing times data
+    activity_data = []
+    for activity, data in activity_processing_times.items():
+        durations = data.get("durations", [])
+        logging.info(f"Activity '{activity}' durations: {durations}")
+        if durations:
+            min_time = min(durations)
+            avg_time = sum(durations) / len(durations)
+            max_time = max(durations)
+            tokens_started = data.get("tokens_started", 0)
+            tokens_completed = data.get("tokens_completed", 0)
+            activity_data.append({
+                "Activity": activity,
+                "Tokens Started": tokens_started,
+                "Tokens Completed": tokens_completed,
+                "Min Time (min)": min_time,
+                "Avg Time (min)": avg_time,
+                "Max Time (min)": max_time
+            })
+        else:
+            logging.warning(f"No durations found for activity '{activity}'.")
+
+    activity_df = pd.DataFrame(activity_data)
+
+    # Prepare resource utilization data
+    resource_data = []
+    for resource, utilization in resource_utilization.items():
+        resource_data.append({
+            "Resource": resource,
+            "Utilization (%)": utilization
+        })
+
+    resource_df = pd.DataFrame(resource_data)
+
+
+    # Save to Excel
+    with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
+        activity_df.to_excel(writer, index=False, sheet_name="Activity Times")
+        resource_df.to_excel(writer, index=False, sheet_name="Resource Utilization")
+    print(f"Simulation report saved to {output_path}")
+
+
 # Check if the current time is within work hours and days
 def is_work_time(current_time):
     work_start = datetime.combine(current_time.date(), datetime.min.time()) + timedelta(hours=6)
@@ -107,38 +160,60 @@ def build_paths(df):
     return paths
 
 def print_processing_times_and_utilization(activity_processing_times, resource_busy_periods, simulation_end_date, start_time, available_resources):
-    # Calculate total simulation time in hours
     total_simulation_time = max((simulation_end_date - start_time).total_seconds() / 3600, 0)
+    resource_utilization = {}
+
+    # Log structure of activity_processing_times for debugging
+    logging.info(f"Activity processing times structure: {activity_processing_times}")
 
     # Print activity processing times
     print("\nActivity Processing Times:")
-    for activity, times in activity_processing_times.items():
-        # Calculate durations from (start, end) pairs
-        durations = [(end - start).total_seconds() / 60 for start, end in times if start and end]
-        if durations:
-            min_time = min(durations)
-            avg_time = sum(durations) / len(durations)
-            max_time = max(durations)
+    for activity, data in activity_processing_times.items():
+        times = data.get("durations", [])
+        valid_durations = []
+        for duration in times:
+            if isinstance(duration, tuple) and len(duration) == 2:
+                start, end = duration
+                if isinstance(start, datetime) and isinstance(end, datetime):
+                    valid_durations.append((end - start).total_seconds() / 60)
+            elif isinstance(duration, (int, float)):
+                valid_durations.append(duration)  # Handle direct durations if present
+        
+        if valid_durations:
+            min_time = min(valid_durations)
+            avg_time = sum(valid_durations) / len(valid_durations)
+            max_time = max(valid_durations)
             print(f"Activity '{activity}': Min = {min_time:.2f} min, Avg = {avg_time:.2f} min, Max = {max_time:.2f} min")
+        else:
+            print(f"Activity '{activity}': No valid durations.")
 
-    # Print resource utilization
+    # Calculate and print resource utilization
     print("\nResource Utilization:")
     for resource, periods in resource_busy_periods.items():
-        total_busy_time = sum((end - start).total_seconds() for start, end in periods if start and end)
-        num_resources = available_resources.get(resource, 1)  # Default to 1 if not specified
-        utilization = (total_busy_time / (total_simulation_time * 3600 * num_resources)) * 100 if total_simulation_time > 0 else 0
-        print(f"Resource '{resource}': Utilization = {utilization:.2f}%")
+        total_busy_time = sum(
+            (end - start).total_seconds() for start, end in periods if start and end
+        )
+        num_resources = available_resources.get(resource, 1)
+        utilization = (
+            (total_busy_time / (total_simulation_time * 3600 * num_resources)) * 100
+            if total_simulation_time > 0 else 0
+        )
+        resource_utilization[resource] = min(utilization, 100)  # Cap at 100%
+        print(f"Resource '{resource}': Utilization = {resource_utilization[resource]:.2f}%")
+        logging.info(f"Resource '{resource}' utilization: {resource_utilization[resource]:.2f}%")
+
+    return resource_utilization
 
 
 # Discrete event simulation
-def discrete_event_simulation(max_arrival_count, arrival_interval_minutes, simulation_days, paths, simulation_metrics, start_time):
+def discrete_event_simulation(max_arrival_count, arrival_interval_minutes, simulation_days, paths, simulation_metrics, start_time, xpdl_file_path):
     previous_date = None
     simulation_end_date = start_time + timedelta(days=simulation_days)
     print('Simulation End Date:', simulation_end_date)
 
     # Determine the first task dynamically from the paths
-    first_path = paths[0][0]  # Get the first segment of the first path
-    start_task = first_path.split("->")[0].strip()  # Extract the task before '->'
+    first_path = paths[0][0]
+    start_task = first_path.split("->")[0].strip()
 
     resource_busy_periods = {resource: [] for resource in simulation_metrics['Resource'].dropna().unique()}
     activity_processing_times = {}
@@ -152,8 +227,14 @@ def discrete_event_simulation(max_arrival_count, arrival_interval_minutes, simul
 
     def get_task_duration(task_name):
         row = simulation_metrics.loc[simulation_metrics['Name'] == task_name]
-        if not row.empty and 'Duration' in row.columns:
-            return int(row['Duration'].iloc[0])
+        if not row.empty and {'Min Time', 'Avg Time', 'Max Time'}.issubset(row.columns):
+            min_time = int(row['Min Time'].fillna(1).iloc[0])
+            avg_time = int(row['Avg Time'].fillna(min_time).iloc[0])
+            max_time = int(row['Max Time'].fillna(avg_time).iloc[0])
+            duration = int(random.triangular(min_time, avg_time, max_time))
+            logging.info(f"Calculated duration for '{task_name}': Min = {min_time}, Avg = {avg_time}, Max = {max_time}, Chosen = {duration}")
+            return duration
+        logging.warning(f"Task duration not found for {task_name}. Defaulting to 1 minute.")
         return 1
 
     current_time = start_time
@@ -168,7 +249,7 @@ def discrete_event_simulation(max_arrival_count, arrival_interval_minutes, simul
             'current_task': None,
             'completed_tasks': set(),
             'start_time': arrival_time,
-            'paths': paths[:]  # Start with all paths
+            'paths': paths[:]
         }
         logging.info(f"Token {token_count} scheduled to start at {arrival_time}")
         token_count += 1
@@ -195,7 +276,6 @@ def discrete_event_simulation(max_arrival_count, arrival_interval_minutes, simul
         token_data = active_tokens[event.token_id]
         if event.event_type == 'start':
             task_name = event.task_name.strip()
-
             if token_data['current_task'] == task_name or task_name in token_data['completed_tasks']:
                 continue
 
@@ -204,8 +284,12 @@ def discrete_event_simulation(max_arrival_count, arrival_interval_minutes, simul
             logging.info(f"Token {event.token_id} started task '{task_name}' at {current_time}")
 
             if task_name not in activity_processing_times:
-                activity_processing_times[task_name] = []
-            activity_processing_times[task_name].append([current_time, None])
+                activity_processing_times[task_name] = {
+                    "durations": [],
+                    "tokens_started": 0,
+                    "tokens_completed": 0,
+                }
+            activity_processing_times[task_name]["tokens_started"] += 1
 
             resource_name = simulation_metrics.loc[simulation_metrics['Name'] == task_name, 'Resource'].values
             if resource_name.size > 0 and pd.notna(resource_name[0]):
@@ -224,6 +308,12 @@ def discrete_event_simulation(max_arrival_count, arrival_interval_minutes, simul
             task_name = event.task_name.strip()
             logging.info(f"Token {event.token_id} finished task '{task_name}' at {current_time}")
 
+            # Track task completion for resource utilization
+            if task_name in activity_processing_times:
+                activity_processing_times[task_name]["tokens_completed"] += 1
+                last_start_time = token_data['start_time']
+                activity_processing_times[task_name]["durations"].append((current_time - last_start_time).total_seconds() / 60)
+
             resource_name = simulation_metrics.loc[simulation_metrics['Name'] == task_name, 'Resource'].values
             if resource_name.size > 0 and pd.notna(resource_name[0]):
                 resource_name = resource_name[0]
@@ -236,26 +326,7 @@ def discrete_event_simulation(max_arrival_count, arrival_interval_minutes, simul
             token_data['completed_tasks'].add(task_name)
             token_data['current_task'] = None
 
-            # Filter paths for the token based on the task and conditions
-            token_data['paths'] = [
-                path for path in token_data['paths']
-                if any(segment.startswith(f"{task_name} ->") for segment in path)
-            ]
 
-            # If only one path remains, determine the end task as the task before "Stop"
-            if len(token_data['paths']) == 1:
-                last_path = token_data['paths'][0]
-                if "-> Stop [Type: Activity Step]" in last_path[-1]:
-                    end_task = last_path[-2].split("->")[1].split("[")[0].strip()
-                else:
-                    end_task = last_path[-1].split("->")[1].split("[")[0].strip()
-
-                if task_name == end_task:
-                    tokens_completed += 1
-                    logging.info(f"Token {event.token_id} completed the process at {current_time}")
-                    continue
-
-            # Move to the next activity
             for path in token_data['paths']:
                 for segment in path:
                     if segment.startswith(f"{task_name} ->"):
@@ -267,19 +338,29 @@ def discrete_event_simulation(max_arrival_count, arrival_interval_minutes, simul
                             heapq.heappush(event_queue, Event(current_time, event.token_id, to_task, 'start'))
                         break
 
-    print_processing_times_and_utilization(activity_processing_times, resource_busy_periods, simulation_end_date, start_time, available_resources)
+    # Calculate resource utilization and activity processing times
+    resource_utilization = print_processing_times_and_utilization(
+        activity_processing_times, 
+        resource_busy_periods, 
+        simulation_end_date, 
+        start_time, 
+        available_resources
+    )
 
+    # Log activity processing times for debugging
+    logging.info(f"Activity Processing Times: {activity_processing_times}")
+
+    save_simulation_report(activity_processing_times, resource_utilization, tokens_completed, xpdl_file_path)
     print(f"Tokens started: {tokens_started}, Tokens completed: {tokens_completed}")
-
 
 # Main function
 def main():
     simulation_metrics_path = 'C:/Test Data/Bizagi/simulation_metrics.xlsx'
-    xpdl_file_path = 'C:/Test Data/Bizagi/5.5_1/5.5.13 Real Property-Monthly Reviews.xpdl'
+    xpdl_file_path = 'C:/Test Data/Bizagi/5.5_1/5.5.13 Real Property-Monthly_Reviews/5.5.13 Real Property-Monthly Reviews-org.xpdl'
     output_sequences_path = 'output_sequences.txt'
 
     # Define work calendar
-    simulation_days = 30  # Number of days for the simulation
+    simulation_days = 7  # Number of days for the simulation
     start_time = datetime(2025, 1, 5, 0, 0)  # Monday 6:00 AM
 
     process_sequences = parse_xpdl_to_sequences(xpdl_file_path, output_sequences_path)
@@ -289,7 +370,7 @@ def main():
     df = read_output_sequences(output_sequences_path)
     paths = build_paths(df)
     max_arrival_count, arrival_interval_minutes = get_simulation_parameters(simulation_metrics)
-    discrete_event_simulation(max_arrival_count, arrival_interval_minutes, simulation_days, paths, simulation_metrics, start_time)
+    discrete_event_simulation(max_arrival_count, arrival_interval_minutes, simulation_days, paths, simulation_metrics, start_time, xpdl_file_path)
 
 if __name__ == "__main__":
     main()
