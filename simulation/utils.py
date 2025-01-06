@@ -37,6 +37,7 @@ def is_work_time(current_time):
     is_work_day = current_time.weekday() < 5  # Monday to Friday
     return is_work_day and work_start <= current_time < work_end
 
+
 # Advance to the next work time if outside of work hours
 def advance_to_work_time(current_time):
     if current_time.weekday() >= 5 or current_time.hour >= 12:  # Weekend or after work hours
@@ -47,13 +48,14 @@ def advance_to_work_time(current_time):
     return current_time
 
 def get_task_duration(task_name, simulation_metrics):
-    row = simulation_metrics.loc[simulation_metrics['Name'] == task_name]
-    if not row.empty and {'Min Time', 'Avg Time', 'Max Time'}.issubset(row.columns):
-        min_time = int(row['Min Time'].fillna(1).iloc[0])
-        avg_time = int(row['Avg Time'].fillna(min_time).iloc[0])
-        max_time = int(row['Max Time'].fillna(avg_time).iloc[0])
-        duration = int(random.triangular(min_time, avg_time, max_time))
-        logging.info(f"Calculated duration for '{task_name}': Min = {min_time}, Avg = {avg_time}, Max = {max_time}, Chosen = {duration}")
-        return duration
-    logging.warning(f"Task duration not found for {task_name}. Defaulting to 1 minute.")
-    return 1
+        row = simulation_metrics.loc[simulation_metrics['Name'] == task_name]
+        if not row.empty and {'Min Time', 'Avg Time', 'Max Time'}.issubset(row.columns):
+            min_time = int(row['Min Time'].fillna(1).iloc[0])
+            avg_time = int(row['Avg Time'].fillna(min_time).iloc[0])
+            max_time = int(row['Max Time'].fillna(avg_time).iloc[0])
+            duration = int(random.triangular(min_time, avg_time, max_time))
+            logging.info(f"Calculated duration for '{task_name}': Min = {min_time}, Avg = {avg_time}, Max = {max_time}, Chosen = {duration}")
+            return duration
+        logging.warning(f"Task duration not found for {task_name}. Defaulting to 0 minute.")
+        return 0
+

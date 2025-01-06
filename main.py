@@ -4,9 +4,10 @@ from simulation.simulation import discrete_event_simulation
 from simulation.utils import get_simulation_parameters
 from simulation.data_handler import read_output_sequences, build_paths
 from simulation.reporting import save_simulation_report
-from xpdl_parser import parse_xpdl_to_sequences
+from simulation.xpdl_parser import parse_xpdl_to_sequences
 import pandas as pd
 from datetime import datetime
+import random
 
 def main():
     simulation_metrics_path = 'C:/Test Data/Bizagi/simulation_metrics.xlsx'
@@ -15,6 +16,8 @@ def main():
 
     simulation_days = 2
     start_time = datetime(2025, 1, 5, 0, 0)
+    RANDOM_SEED = 0
+    random.seed(RANDOM_SEED)
 
     process_sequences = parse_xpdl_to_sequences(xpdl_file_path, output_sequences_path)
     simulation_metrics = pd.read_excel(simulation_metrics_path, sheet_name=0)

@@ -12,7 +12,7 @@ import pandas as pd
 import openpyxl
 
 # Importing the parse_xpdl_to_sequences function
-from xpdl_parser import parse_xpdl_to_sequences
+from simulation.xpdl_parser import parse_xpdl_to_sequences
 
 # Configure logging
 logging.basicConfig(
