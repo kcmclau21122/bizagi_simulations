@@ -310,7 +310,9 @@ def print_processing_times_and_utilization(activity_processing_times, resource_b
     return resource_utilization
 
 # Discrete event simulation
-def discrete_event_simulation(max_arrival_count, arrival_interval_minutes, simulation_days, paths, simulation_metrics, start_time, xpdl_file_path, transitions_df):
+def discrete_event_simulation(max_arrival_count, arrival_interval_minutes, simulation_days, paths, 
+                              simulation_metrics, start_time, xpdl_file_path, transitions_df, start_tasks):
+
     previous_date = None
     simulation_end_date = start_time + timedelta(days=simulation_days)
     print('Simulation End Date:', simulation_end_date)
@@ -343,21 +345,24 @@ def discrete_event_simulation(max_arrival_count, arrival_interval_minutes, simul
     current_time = start_time
     token_count = 0
 
+    # Schedule all tokens for independent start tasks
     while token_count < max_arrival_count:
         arrival_time = current_time + timedelta(minutes=arrival_interval_minutes * token_count)
         if arrival_time >= simulation_end_date:
             break
-        heapq.heappush(event_queue, Event(arrival_time, token_count, start_task, 'start'))
-        active_tokens[token_count] = {
-            'current_task': None,
-            'completed_tasks': set(),
-            'start_time': arrival_time,
-            'paths': paths[:],
-            'wait_start_time': None  # To track waiting start time
-        }
-        logging.info(f"Token {token_count} scheduled to start at {arrival_time}")
+        for start_task in start_tasks:  # Schedule tokens for all start tasks
+            heapq.heappush(event_queue, Event(arrival_time, token_count, start_task, 'start'))
+            active_tokens[token_count] = {
+                'current_task': None,
+                'completed_tasks': set(),
+                'start_time': arrival_time,
+                'paths': paths[:],
+                'wait_start_time': None  # Track waiting start time
+            }
+            logging.info(f"Token {token_count} scheduled to start at {arrival_time} for task '{start_task}'")
         token_count += 1
 
+    # Advance the timer by 1 second if number of days not reached.   
     while current_time < simulation_end_date or event_queue:
         if not event_queue:
             current_time += timedelta(seconds=1)
@@ -380,19 +385,29 @@ def discrete_event_simulation(max_arrival_count, arrival_interval_minutes, simul
         token_data = active_tokens[event.token_id]
         if event.event_type == 'start':
             task_name = event.task_name.strip()
+
+            # Prevent duplicate processing for the same task
             if token_data['current_task'] == task_name or task_name in token_data['completed_tasks']:
                 continue
 
+            # Increment token start count for start tasks
             tokens_started += 1 if task_name == start_task else 0
             token_data['current_task'] = task_name
             logging.info(f"Token {event.token_id} started task '{task_name}' at {current_time}")
+
+            # Check prerequisites for the task
+            prerequisites = transitions_df[transitions_df['To'] == task_name]['From'].values
+            if any(prerequisite not in token_data['completed_tasks'] for prerequisite in prerequisites):
+                # Reschedule the start event if prerequisites are not met
+                heapq.heappush(event_queue, Event(current_time + timedelta(seconds=1), event.token_id, task_name, 'start'))
+                continue
 
             # Get activity type for the current task
             activity_type = transitions_df.loc[transitions_df['From'] == task_name, 'Type'].values
             activity_type = activity_type[0] if activity_type.size > 0 else "Unknown"
 
             if activity_type == "Gateway":
-                # Gateway activities: only determine token paths
+                # Gateway activities: Only determine token paths
                 logging.info(f"Token {event.token_id} passed through gateway '{task_name}' at {current_time}")
                 if task_name not in activity_processing_times:
                     activity_processing_times[task_name] = {
@@ -404,7 +419,7 @@ def discrete_event_simulation(max_arrival_count, arrival_interval_minutes, simul
                 activity_processing_times[task_name]["tokens_started"] += 1
                 continue
 
-            # Normal activities: process tokens, track resource usage
+            # Normal activities: Process tokens, check resources, and track usage
             if task_name not in activity_processing_times:
                 activity_processing_times[task_name] = {
                     "durations": [],
@@ -414,15 +429,18 @@ def discrete_event_simulation(max_arrival_count, arrival_interval_minutes, simul
                 }
             activity_processing_times[task_name]["tokens_started"] += 1
 
+            # Check resource availability
             resource_name = simulation_metrics.loc[simulation_metrics['Name'] == task_name, 'Resource'].values
             if resource_name.size > 0 and pd.notna(resource_name[0]):
                 resource_name = resource_name[0]
                 if active_resources[resource_name] >= available_resources.get(resource_name, 1):
+                    # If resource is unavailable, reschedule the task
                     if token_data['wait_start_time'] is None:
                         token_data['wait_start_time'] = current_time
-                    heapq.heappush(event_queue, Event(current_time + timedelta(seconds=1), event.token_id, task_name, 'start'))
+                    heapq.heappush(event_queue, Event(current_time + timedelta(seconds=30), event.token_id, task_name, 'start'))
                     continue
 
+                # If resources are available, allocate them
                 if token_data['wait_start_time'] is not None:
                     wait_time = (current_time - token_data['wait_start_time']).total_seconds() / 60
                     activity_processing_times[task_name]["wait_times"].append(wait_time)
@@ -431,8 +449,10 @@ def discrete_event_simulation(max_arrival_count, arrival_interval_minutes, simul
                 active_resources[resource_name] += 1
                 resource_busy_periods[resource_name].append([current_time, None])
 
+            # Schedule the task end event
             task_duration = timedelta(minutes=get_task_duration(task_name))
             heapq.heappush(event_queue, Event(current_time + task_duration, event.token_id, task_name, 'end'))
+
 
         elif event.event_type == 'end':
             task_name = event.task_name.strip()
@@ -494,12 +514,16 @@ def main():
     print("Process Sequences:", process_sequences)
 
     simulation_metrics = pd.read_excel(simulation_metrics_path, sheet_name=0)
-    df = read_output_sequences(output_sequences_path)
-    paths = build_paths(df)
+    transitions_df = read_output_sequences(output_sequences_path)
+    
+    # Extract paths and start tasks
+    paths = build_paths(transitions_df)
+    start_tasks = set(transitions_df[transitions_df['Type'] == 'Start']['From'])
+    
     max_arrival_count, arrival_interval_minutes = get_simulation_parameters(simulation_metrics)
     discrete_event_simulation(
         max_arrival_count, arrival_interval_minutes, simulation_days, paths,
-        simulation_metrics, start_time, xpdl_file_path, df
+        simulation_metrics, start_time, xpdl_file_path, transitions_df, start_tasks
     )
 
 if __name__ == "__main__":
