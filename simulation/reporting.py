@@ -3,11 +3,46 @@ import datetime
 import os
 import pandas as pd
 
-def save_simulation_report(activity_processing_times, resource_utilization, tokens_completed, xpdl_file_path, transitions_df):
+def save_simulation_report(activity_processing_times, resource_utilization, active_tokens, xpdl_file_path, transitions_df, completed_tokens):
     base_filename = os.path.splitext(os.path.basename(xpdl_file_path))[0]
     output_path = f"{base_filename}_results.xlsx"
 
-    activity_data = []
+    # Calculate total started tokens and process-level metrics
+    if completed_tokens:
+        process_durations = [
+            (token['end_time'] - token['start_time']).total_seconds() / 60 for token in completed_tokens
+        ]
+        process_wait_times = [token['total_wait_time'] for token in completed_tokens]
+
+        min_time = round(min(process_durations), 2)
+        max_time = round(max(process_durations), 2)
+        avg_time = round(sum(process_durations) / len(process_durations), 2)
+        total_wait_time = round(sum(process_wait_times), 2)
+        min_wait_time = round(min(process_wait_times), 2)
+        max_wait_time = round(max(process_wait_times), 2)
+        avg_wait_time = round(sum(process_wait_times) / len(process_wait_times), 2)
+    else:
+        min_time = max_time = avg_time = total_wait_time = min_wait_time = max_wait_time = avg_wait_time = 0
+
+    # Create the process-level summary row
+    process_row = {
+        "Activity": base_filename,
+        "Activity Type": "Process",
+        "Tokens Started": active_tokens,
+        "Tokens Completed": len(completed_tokens),
+        "Min Time (min)": min_time,
+        "Max Time (min)": max_time,
+        "Avg Time (min)": avg_time,
+        "Total Time Waiting for Resources (min)": total_wait_time,
+        "Min Time Waiting for Resources (min)": min_wait_time,
+        "Max Time Waiting for Resources (min)": max_wait_time,
+        "Avg Time Waiting for Resources (min)": avg_wait_time,
+    }
+
+    # Insert the process row as the first row in the activity data
+    activity_data = [process_row]
+
+    # Continue processing individual activity data...
     for activity, data in activity_processing_times.items():
         durations = data.get("durations", [])
         wait_times = data.get("wait_times", [])
@@ -42,7 +77,7 @@ def save_simulation_report(activity_processing_times, resource_utilization, toke
             "Avg Time Waiting for Resources (min)": avg_wait_time,
         })
 
-    # Save to Excel
+    # Save data to Excel
     activity_df = pd.DataFrame(activity_data)
     resource_df = pd.DataFrame([
         {"Resource": res, "Utilization (%)": round(util, 2)} for res, util in resource_utilization.items()
@@ -53,7 +88,6 @@ def save_simulation_report(activity_processing_times, resource_utilization, toke
         activity_df.to_excel(writer, index=False, sheet_name="Activity Times")
 
     print(f"Simulation report saved to {output_path}")
-
 
 def print_processing_times_and_utilization(activity_processing_times, resource_busy_periods, simulation_end_date, start_time, available_resources, transitions_df):
     total_simulation_time = max((simulation_end_date - start_time).total_seconds() / 3600, 0)

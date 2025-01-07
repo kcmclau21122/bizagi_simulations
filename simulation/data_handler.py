@@ -21,13 +21,53 @@ def read_output_sequences(file_path):
 
     # Start activities: appear in 'From' but not in 'To'
     start_activities = all_from_tasks - all_to_tasks
-    transitions_df.loc[transitions_df['From'].isin(start_activities), 'Type'] = 'Start'
+    #transitions_df.loc[transitions_df['From'].isin(start_activities), 'Type'] = 'Start'
 
     # Stop activities: appear in 'To' but not in 'From'
     stop_activities = all_to_tasks - all_from_tasks
     transitions_df.loc[transitions_df['To'].isin(stop_activities), 'Type'] = 'Stop'
 
     return transitions_df
+
+def remove_duplicate_activities(path):
+    """
+    Removes duplicate first activities in the next step if they match the last activity in the previous step.
+    Once the unique path is created, ensures the first activity in the path has [Type: Start].
+    """
+    if not path:
+        return path
+
+    unique_path = []
+    previous_to_activity = None
+
+    # Create unique path by removing self-links
+    for step in path:
+        parts = step.split("->")
+        if len(parts) != 2:
+            unique_path.append(step)  # Add malformed steps as is
+            continue
+        
+        from_activity = parts[0].split(" [Type:")[0].strip()  # Extract "from" activity name
+        to_activity = parts[1].split(" [Type:")[0].strip()    # Extract "to" activity name
+
+        # Skip the step if "from_activity" matches "previous_to_activity"
+        if from_activity == previous_to_activity:
+            continue
+
+        unique_path.append(step)
+        previous_to_activity = to_activity  # Update for the next iteration
+
+    # Set the first activity's type to [Type: Start]
+    if unique_path:
+        first_step = unique_path[0]
+        parts = first_step.split("->")
+        if len(parts) == 2:
+            from_activity = parts[0].split(" [Type:")[0].strip()  # Extract "from" activity name
+            parts[0] = f"{from_activity} [Type: Start]"  # Set or replace the type of the first activity
+            unique_path[0] = " ->".join(parts)
+
+    return unique_path
+
 
 def build_paths(df):
     paths = []
@@ -39,7 +79,11 @@ def build_paths(df):
             logging.info("Path completed: %s", " -> ".join(current_path))
             return
         for _, row in next_steps.iterrows():
-            current_path.append(f"{row['From']} -> {row['To']} [Type: {row['Type']}]")
+            next_step = f"{row['From']} [Type: {row['Type']}] -> {row['To']} [Type: {row['Type']}]"
+            # Skip adding the step if it repeats the last activity
+            if current_path and current_path[-1] == next_step:
+                continue
+            current_path.append(next_step)
             traverse(row['To'], current_path)
             current_path.pop()
 
@@ -51,5 +95,8 @@ def build_paths(df):
     for idx, path in enumerate(paths, start=1):
         logging.info("Path %d: %s", idx, " -> ".join(path))
 
-    return paths
+    # Remove duplicate activities before returning the path
+    cleaned_paths = [remove_duplicate_activities(path) for path in paths]
+
+    return cleaned_paths
 
