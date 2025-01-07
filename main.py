@@ -1,4 +1,4 @@
-# Bug: Wait times are not calculated.  Not properly tracking wait time.
+# Bug: Wait times are not calculated.  Not properly tracking wait time.  Not accuratly reporting on number of tokens completed.
 # Main code file for the Bizagi Simulator eumlator
 
 from simulation.simulation import discrete_event_simulation

@@ -3,11 +3,11 @@ import datetime
 import os
 import pandas as pd
 
-def save_simulation_report(activity_processing_times, resource_utilization, active_tokens, xpdl_file_path, transitions_df, completed_tokens):
+def save_simulation_report(activity_processing_times, resource_utilization, total_tokens_started, xpdl_file_path, transitions_df, completed_tokens):
     base_filename = os.path.splitext(os.path.basename(xpdl_file_path))[0]
     output_path = f"{base_filename}_results.xlsx"
 
-    # Calculate total started tokens and process-level metrics
+    # Calculate process-level metrics
     if completed_tokens:
         process_durations = [
             (token['end_time'] - token['start_time']).total_seconds() / 60 for token in completed_tokens
@@ -28,7 +28,7 @@ def save_simulation_report(activity_processing_times, resource_utilization, acti
     process_row = {
         "Activity": base_filename,
         "Activity Type": "Process",
-        "Tokens Started": active_tokens,
+        "Tokens Started": total_tokens_started,
         "Tokens Completed": len(completed_tokens),
         "Min Time (min)": min_time,
         "Max Time (min)": max_time,
@@ -42,7 +42,7 @@ def save_simulation_report(activity_processing_times, resource_utilization, acti
     # Insert the process row as the first row in the activity data
     activity_data = [process_row]
 
-    # Continue processing individual activity data...
+    # Process individual activity data
     for activity, data in activity_processing_times.items():
         durations = data.get("durations", [])
         wait_times = data.get("wait_times", [])
@@ -88,6 +88,7 @@ def save_simulation_report(activity_processing_times, resource_utilization, acti
         activity_df.to_excel(writer, index=False, sheet_name="Activity Times")
 
     print(f"Simulation report saved to {output_path}")
+
 
 def print_processing_times_and_utilization(activity_processing_times, resource_busy_periods, simulation_end_date, start_time, available_resources, transitions_df):
     total_simulation_time = max((simulation_end_date - start_time).total_seconds() / 3600, 0)

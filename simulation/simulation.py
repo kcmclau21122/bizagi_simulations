@@ -31,13 +31,16 @@ def release_resource(resource_name, active_resources):
 # Function to schedule all tokens
 def schedule_tokens(max_arrival_count, arrival_interval_minutes, start_time, start_tasks, paths, event_queue, active_tokens, transitions_df, simulation_end_date):
     token_count = 0
-    for start_task in start_tasks:
-        next_tasks = transitions_df[transitions_df['From'] == start_task]['To'].tolist()
-        for next_task in next_tasks:
-            while token_count < max_arrival_count:
-                arrival_time = start_time + timedelta(minutes=arrival_interval_minutes * token_count)
+    arrival_time = start_time  # Initialize the arrival time for the first token
+
+    while token_count < max_arrival_count:
+        for start_task in start_tasks:
+            next_tasks = transitions_df[transitions_df['From'] == start_task]['To'].tolist()
+            for next_task in next_tasks:
                 if arrival_time >= simulation_end_date:
                     break
+
+                # Schedule the token
                 heapq.heappush(event_queue, Event(arrival_time, token_count, next_task, 'start'))
                 active_tokens[token_count] = {
                     'current_task': None,
@@ -49,8 +52,10 @@ def schedule_tokens(max_arrival_count, arrival_interval_minutes, start_time, sta
                     'wait_start_time': None
                 }
                 logging.info(f"Token {token_count} scheduled to start at {arrival_time} for task '{next_task}'")
-                token_count += 1
 
+                # Update the arrival time for the next token
+                arrival_time += timedelta(minutes=arrival_interval_minutes)
+                token_count += 1
 
 # Function to start token processing
 def start_token_processing(token_id, task_name, current_time, simulation_metrics, active_resources, available_resources, 
@@ -146,7 +151,8 @@ def complete_activity(token_id, task_name, current_time, simulation_metrics, act
     # Check if task_name is the last task in the process based on transitions_df
     if task_name not in transitions_df['From'].values:  # task_name does not lead to any other task
         active_tokens[token_id]['end_time'] = current_time
-        completed_tokens.append(active_tokens[token_id])  # Move token to completed list
+        if token_id not in [token['token_id'] for token in completed_tokens]:  # Ensure no duplicates
+            completed_tokens.append({'token_id': token_id, **active_tokens[token_id]})  # Add completed token
         logging.info(f"Token {token_id} completed the process at {current_time}.")
         return
 

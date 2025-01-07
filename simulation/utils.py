@@ -8,21 +8,21 @@ from simulation.event import Event
 
 # Read simulation parameters
 def get_simulation_parameters(simulation_metrics):
-    start_event = simulation_metrics[simulation_metrics['Type'].str.lower() == 'start event']
+    start_event = simulation_metrics[simulation_metrics['Type'].str.lower() == 'start']
     if not start_event.empty:
         max_arrival_count = (
             int(start_event['Max arrival count'].iloc[0]) 
             if 'max arrival count' in map(str.lower, start_event.columns) 
-            else 10
+            else 0
         )
         arrival_interval_minutes = (
             int(start_event['Arrival Interval'].iloc[0]) 
             if 'arrival interval' in map(str.lower, start_event.columns) 
-            else 10
+            else 0
         )
         return max_arrival_count, arrival_interval_minutes
     logging.warning("Start event parameters not found. Using default values.")
-    return 10, 10  # Default values if not found
+    return 0, 0  # Default values if not found
 
 # Helper function to advance simulation time in 1-second intervals
 def advance_time_in_seconds(current_time, event_queue, active_resources, resource_wait_queue, active_tokens, resource_busy_periods):
