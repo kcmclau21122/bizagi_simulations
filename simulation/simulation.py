@@ -51,26 +51,61 @@ def schedule_tokens(max_arrival_count, arrival_interval_minutes, start_time, sta
 
 
 # Function to start token processing
-def start_token_processing(token_id, task_name, current_time, simulation_metrics, active_resources, available_resources, resource_busy_periods, activity_processing_times, event_queue):
+def start_token_processing(token_id, task_name, current_time, simulation_metrics, active_resources, available_resources, 
+    resource_busy_periods, activity_processing_times, event_queue, active_tokens):
+    # Determine the resource required for the task
     resource_name = simulation_metrics.loc[simulation_metrics['Name'] == task_name, 'Resource'].values
     if resource_name.size > 0 and pd.notna(resource_name[0]):
         resource_name = resource_name[0]
+        # Check if resource is available
         if not assign_resource(resource_name, active_resources, available_resources):
+            # Token needs to wait; mark waiting start time
+            if active_tokens[token_id].get('wait_start_time') is None:
+                active_tokens[token_id]['wait_start_time'] = current_time
             return False  # Resource unavailable
+
+        # If waiting, calculate and log the wait time
+        if active_tokens[token_id]['wait_start_time'] is not None:
+            wait_time = (current_time - active_tokens[token_id]['wait_start_time']).total_seconds() / 60  # Convert to minutes
+            if task_name not in activity_processing_times:
+                activity_processing_times[task_name] = {"durations": [], "wait_times": [], "tokens_started": 0, "tokens_completed": 0}
+            activity_processing_times[task_name]["wait_times"].append(wait_time)
+            active_tokens[token_id]['wait_start_time'] = None  # Reset wait start time
+            logging.info(f"Token {token_id} waited {wait_time:.2f} minutes for task '{task_name}'")
 
         resource_busy_periods[resource_name].append([current_time, None])
 
+    # Log the start time of the task
+    active_tokens[token_id]['task_start_time'] = current_time
+
+    # Increment the number of tokens started for this activity
+    if task_name not in activity_processing_times:
+        activity_processing_times[task_name] = {"durations": [], "wait_times": [], "tokens_started": 0, "tokens_completed": 0}
+    activity_processing_times[task_name]["tokens_started"] += 1
+
+    # Schedule the end event for the task
     task_duration = timedelta(minutes=get_task_duration(task_name, simulation_metrics))
     heapq.heappush(event_queue, Event(current_time + task_duration, token_id, task_name, 'end'))
     logging.info(f"Token {token_id} started processing task '{task_name}' at {current_time} for {task_duration}")
+
     return True
 
+
 # Function to complete a token's activity
-def complete_activity(token_id, task_name, current_time, simulation_metrics, active_tokens, active_resources, resource_busy_periods, transitions_df, event_queue):
-    # Log completion of the task
+def complete_activity(token_id, task_name, current_time, simulation_metrics, active_tokens, active_resources, resource_busy_periods, transitions_df, event_queue, activity_processing_times):
     logging.info(f"Token {token_id} completed task '{task_name}' at {current_time}")
 
-    # Release resource
+    # Calculate and log processing time
+    start_time = active_tokens[token_id].get('task_start_time', None)
+    if start_time:
+        process_time = (current_time - start_time).total_seconds() / 60  # Convert to minutes
+        if task_name not in activity_processing_times:
+            activity_processing_times[task_name] = {"durations": [], "wait_times": [], "tokens_started": 0, "tokens_completed": 0}
+        activity_processing_times[task_name]["durations"].append(process_time)
+        activity_processing_times[task_name]["tokens_completed"] += 1
+        logging.info(f"Token {token_id}: Task '{task_name}' processing time = {process_time:.2f} minutes.")
+
+    # Release resources
     resource_name = simulation_metrics.loc[simulation_metrics['Name'] == task_name, 'Resource'].values
     if resource_name.size > 0 and pd.notna(resource_name[0]):
         resource_name = resource_name[0]
@@ -80,27 +115,19 @@ def complete_activity(token_id, task_name, current_time, simulation_metrics, act
                 period[1] = current_time
                 break
 
-    # Check if this is a "Stop" activity
+    # Handle "Stop" activity
     activity_type = simulation_metrics.loc[simulation_metrics['Name'] == task_name, 'Type'].values
     activity_type = activity_type[0] if activity_type.size > 0 else "Unknown"
     if activity_type == "Stop":
         logging.info(f"Token {token_id} reached 'Stop' at {current_time}. Process completed.")
-        process_time = (current_time - active_tokens[token_id]['start_time']).total_seconds() / 60
-        logging.info(f"Total processing time for token {token_id}: {process_time:.2f} minutes")
         return
 
-    # Mark task as completed
-    if task_name not in active_tokens[token_id]['completed_tasks']:
-        active_tokens[token_id]['completed_tasks'].add(task_name)
-        active_tokens[token_id]['current_task'] = None
-
-        # Schedule next task
-        next_tasks = transitions_df[transitions_df['From'] == task_name]['To'].tolist()
-        for next_task in next_tasks:
-            if next_task not in active_tokens[token_id]['completed_tasks']:
-                heapq.heappush(event_queue, Event(current_time, token_id, next_task, 'start'))
-                logging.info(f"Token {token_id} scheduled for next task '{next_task}' at {current_time}")
-
+    # Schedule next tasks
+    next_tasks = transitions_df[transitions_df['From'] == task_name]['To'].tolist()
+    for next_task in next_tasks:
+        if next_task not in active_tokens[token_id]['completed_tasks']:
+            heapq.heappush(event_queue, Event(current_time, token_id, next_task, 'start'))
+            logging.info(f"Token {token_id} scheduled for next task '{next_task}' at {current_time}")
 
 # Function to process tokens
 def process_tokens(event_queue, active_tokens, active_resources, available_resources, resource_busy_periods, activity_processing_times, transitions_df, simulation_metrics):
@@ -111,13 +138,11 @@ def process_tokens(event_queue, active_tokens, active_resources, available_resou
         task_name = event.task_name
 
         if event.event_type == 'start':
-            # Only start a task if it has not been completed already
-            if task_name not in active_tokens[token_id]['completed_tasks']:
-                if start_token_processing(token_id, task_name, current_time, simulation_metrics, active_resources, available_resources, resource_busy_periods, activity_processing_times, event_queue):
-                    active_tokens[token_id]['current_task'] = task_name
-
+            if start_token_processing(token_id, task_name, current_time, simulation_metrics, active_resources, available_resources, resource_busy_periods, activity_processing_times, event_queue, active_tokens):
+                active_tokens[token_id]['current_task'] = task_name
         elif event.event_type == 'end':
-            complete_activity(token_id, task_name, current_time, simulation_metrics, active_tokens, active_resources, resource_busy_periods, transitions_df, event_queue)
+            complete_activity(token_id, task_name, current_time, simulation_metrics, active_tokens, active_resources, resource_busy_periods, transitions_df, event_queue, activity_processing_times)
+
 
 # Main simulation function
 def discrete_event_simulation(max_arrival_count, arrival_interval_minutes, simulation_days, paths, 

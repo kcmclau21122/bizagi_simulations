@@ -43,8 +43,10 @@ def parse_xpdl_to_sequences(xpdl_file_path, output_file_path):
         to_activity = activities.get(to_id, "Unknown")
         if to_activity == "Unknown":
             to_activity = "Stop"
+            condition_type = "Stop"
+        else:
+            condition_type = f"CONDITION-{transition_name}" if transition_name in ["Yes", "No"] else "Activity Step"
 
-        condition_type = f"CONDITION-{transition_name}" if transition_name in ["Yes", "No"] else "Activity Step"
         if from_id not in transitions:
             transitions[from_id] = []
         transitions[from_id].append((to_id, to_activity, condition_type))
