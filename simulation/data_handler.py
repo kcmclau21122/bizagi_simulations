@@ -11,23 +11,23 @@ def read_output_sequences(file_path):
             to_task, type_info = parts[1].rsplit('[Type: ', 1)
             to_task = to_task.strip()
             type_info = type_info.rstrip(']').strip()
-            transitions.append({'From': from_task, 'To': to_task, 'Type': type_info})
+            transitions.append({'from': from_task, 'to': to_task, 'type': type_info})  # Use lowercase keys
 
     transitions_df = pd.DataFrame(transitions)
 
     # Identify "Start" and "Stop" activities
-    all_from_tasks = set(transitions_df['From'])
-    all_to_tasks = set(transitions_df['To'])
+    all_from_tasks = set(transitions_df['from'])
+    all_to_tasks = set(transitions_df['to'])
 
-    # Start activities: appear in 'From' but not in 'To'
+    # Start activities: appear in 'from' but not in 'to'
     start_activities = all_from_tasks - all_to_tasks
-    #transitions_df.loc[transitions_df['From'].isin(start_activities), 'Type'] = 'Start'
 
-    # Stop activities: appear in 'To' but not in 'From'
+    # Stop activities: appear in 'to' but not in 'from'
     stop_activities = all_to_tasks - all_from_tasks
-    transitions_df.loc[transitions_df['To'].isin(stop_activities), 'Type'] = 'Stop'
+    transitions_df.loc[transitions_df['to'].isin(stop_activities), 'type'] = 'Stop'
 
     return transitions_df
+
 
 def remove_duplicate_activities(path):
     """
@@ -73,21 +73,21 @@ def build_paths(df):
     paths = []
 
     def traverse(current_task, current_path):
-        next_steps = df[df['From'] == current_task]
+        next_steps = df[df['from'] == current_task]  # Use lowercase key
         if next_steps.empty:
             paths.append(current_path[:])
             logging.info("Path completed: %s", " -> ".join(current_path))
             return
         for _, row in next_steps.iterrows():
-            next_step = f"{row['From']} [Type: {row['Type']}] -> {row['To']} [Type: {row['Type']}]"
+            next_step = f"{row['from']} [Type: {row['type']}] -> {row['to']} [Type: {row['type']}]"
             # Skip adding the step if it repeats the last activity
             if current_path and current_path[-1] == next_step:
                 continue
             current_path.append(next_step)
-            traverse(row['To'], current_path)
+            traverse(row['to'], current_path)  # Use lowercase key
             current_path.pop()
 
-    start_tasks = set(df['From']) - set(df['To'])
+    start_tasks = set(df['from']) - set(df['to'])  # Use lowercase keys
     for start_task in start_tasks:
         traverse(start_task, [])
 
@@ -99,4 +99,3 @@ def build_paths(df):
     cleaned_paths = [remove_duplicate_activities(path) for path in paths]
 
     return cleaned_paths
-
