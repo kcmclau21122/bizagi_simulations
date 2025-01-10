@@ -8,19 +8,26 @@ from simulation.event import Event
 
 # Read simulation parameters
 def get_simulation_parameters(simulation_metrics):
-    start_event = simulation_metrics[simulation_metrics['Type'].str.lower() == 'start']
+    # Convert column names to lowercase for consistent access
+    simulation_metrics.columns = map(str.lower, simulation_metrics.columns)
+
+    # Filter the DataFrame for rows where 'type' equals 'start' (case-insensitively)
+    start_event = simulation_metrics[simulation_metrics['type'].str.lower() == 'start']
+    
     if not start_event.empty:
+        # Check for the 'max arrival count' and 'arrival interval' columns and fetch their values
         max_arrival_count = (
-            int(start_event['Max arrival count'].iloc[0]) 
-            if 'max arrival count' in map(str.lower, start_event.columns) 
+            int(start_event['max arrival count'].iloc[0]) 
+            if 'max arrival count' in simulation_metrics.columns 
             else 0
         )
         arrival_interval_minutes = (
-            int(start_event['Arrival Interval'].iloc[0]) 
-            if 'arrival interval' in map(str.lower, start_event.columns) 
+            int(start_event['arrival interval'].iloc[0]) 
+            if 'arrival interval' in simulation_metrics.columns 
             else 0
         )
         return max_arrival_count, arrival_interval_minutes
+
     logging.warning("Start event parameters not found. Using default values.")
     return 0, 0  # Default values if not found
 
@@ -42,11 +49,19 @@ def advance_time_in_seconds(current_time, event_queue, active_resources, resourc
                 active_tokens[token_id]['wait_start_time'] = None
 
 # Fetch conditional probabilities
+# Fetch conditional probabilities
 def get_condition_probability(simulation_metrics, from_activity, condition_type):
-    condition_key = condition_type.split("-")[1].strip()
-    row = simulation_metrics.loc[simulation_metrics['Name'] == from_activity]
-    if not row.empty and condition_key in row.columns:
+    # Normalize column names to lowercase for consistent access
+    simulation_metrics.columns = map(str.lower, simulation_metrics.columns)
+    
+    # Convert the input strings to lowercase for comparison
+    condition_key = condition_type.split("-")[1].strip().lower()
+    row = simulation_metrics.loc[simulation_metrics['name'].str.lower() == from_activity.lower()]
+    
+    # Check if the row is not empty and the condition key exists in the columns
+    if not row.empty and condition_key in simulation_metrics.columns:
         return row.iloc[0][condition_key]
+    
     logging.warning("Probability for condition '%s' not found. Defaulting to 0.5.", condition_type)
     return 0.5  # Default probability
 
@@ -67,16 +82,20 @@ def advance_to_work_time(current_time):
         current_time = datetime.combine(current_time.date(), datetime.min.time()) + timedelta(hours=6)
     return current_time
 
+# Get task duration
 def get_task_duration(task_name, simulation_metrics):
     """
     Calculate task duration using Bizagi's triangular distribution. 
     Return None if Min Time, Avg Time, and Max Time are all None.
     """
-    row = simulation_metrics.loc[simulation_metrics['Name'] == task_name]
+    # Normalize column names to lowercase for consistent access
+    simulation_metrics.columns = map(str.lower, simulation_metrics.columns)
+
+    row = simulation_metrics.loc[simulation_metrics['name'].str.lower() == task_name.lower()]
     if not row.empty:
-        min_time = row['Min Time'].iloc[0]
-        avg_time = row['Avg Time'].iloc[0]
-        max_time = row['Max Time'].iloc[0]
+        min_time = row['min time'].iloc[0]
+        avg_time = row['avg time'].iloc[0]
+        max_time = row['max time'].iloc[0]
 
         if pd.isna(min_time) and pd.isna(avg_time) and pd.isna(max_time):
             logging.info(f"No processing time specified for task '{task_name}'. Skipping processing time.")
@@ -93,4 +112,3 @@ def get_task_duration(task_name, simulation_metrics):
 
     logging.warning(f"Task duration not found for '{task_name}'. Defaulting to None.")
     return None
-

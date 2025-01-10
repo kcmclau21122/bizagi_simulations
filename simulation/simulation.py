@@ -35,7 +35,7 @@ def schedule_tokens(max_arrival_count, arrival_interval_minutes, start_time, sta
 
     while token_count < max_arrival_count:
         for start_task in start_tasks:
-            next_tasks = transitions_df[transitions_df['From'] == start_task]['To'].tolist()
+            next_tasks = transitions_df[transitions_df['from'] == start_task]['to'].tolist()
             for next_task in next_tasks:
                 if arrival_time >= simulation_end_date:
                     break
@@ -70,7 +70,7 @@ def start_token_processing(token_id, task_name, current_time, simulation_metrics
         return True
 
     # Determine the resource required for the task
-    resource_name = simulation_metrics.loc[simulation_metrics['Name'] == task_name, 'Resource'].values
+    resource_name = simulation_metrics.loc[simulation_metrics['name'] == task_name, 'resource'].values
     if resource_name.size > 0 and pd.notna(resource_name[0]):
         resource_name = resource_name[0]
 
@@ -114,8 +114,6 @@ def start_token_processing(token_id, task_name, current_time, simulation_metrics
 
     return True
 
-
-
 # Function to complete a token's activity
 def complete_activity(token_id, task_name, current_time, simulation_metrics, active_tokens, active_resources, 
                       resource_busy_periods, transitions_df, event_queue, activity_processing_times, completed_tokens, paths):
@@ -135,7 +133,7 @@ def complete_activity(token_id, task_name, current_time, simulation_metrics, act
         logging.info(f"Token {token_id}: Task '{task_name}' processing time = {process_time:.2f} minutes.")
 
     # Release resources if applicable
-    resource_name = simulation_metrics.loc[simulation_metrics['Name'] == task_name, 'Resource'].values
+    resource_name = simulation_metrics.loc[simulation_metrics['name'] == task_name, 'resource'].values
     if task_duration is not None and resource_name.size > 0 and pd.notna(resource_name[0]):
         resource_name = resource_name[0]
         release_resource(resource_name, active_resources)
@@ -145,11 +143,11 @@ def complete_activity(token_id, task_name, current_time, simulation_metrics, act
                 break
 
     # Handle "Stop" activity
-    activity_type = simulation_metrics.loc[simulation_metrics['Name'] == task_name, 'Type'].values
-    activity_type = activity_type[0] if activity_type.size > 0 else "Unknown"
+    activity_type = simulation_metrics.loc[simulation_metrics['name'] == task_name, 'type'].values
+    activity_type = activity_type[0] if activity_type.size > 0 else "unknown"
+
     # Check if this is the last activity in the path
-    # Check if task_name is the last task in the process based on transitions_df
-    if task_name not in transitions_df['From'].values:  # task_name does not lead to any other task
+    if task_name not in transitions_df['from'].values:  # task_name does not lead to any other task
         active_tokens[token_id]['end_time'] = current_time
         if token_id not in [token['token_id'] for token in completed_tokens]:  # Ensure no duplicates
             completed_tokens.append({'token_id': token_id, **active_tokens[token_id]})  # Add completed token
@@ -157,16 +155,16 @@ def complete_activity(token_id, task_name, current_time, simulation_metrics, act
         return
 
     # Schedule next tasks
-    next_tasks = transitions_df[transitions_df['From'] == task_name]
-    if activity_type == "Gateway":
+    next_tasks = transitions_df[transitions_df['from'] == task_name]
+    if activity_type == "gateway":
         # Fetch probabilities for each outgoing conditional path
         probabilities = []
         tasks = []
         for _, row in next_tasks.iterrows():
-            condition_type = row['Type']  # Example: "CONDITION-Yes" or "CONDITION-No"
+            condition_type = row['type']  # Example: "condition-yes" or "condition-no"
             probability = get_condition_probability(simulation_metrics, task_name, condition_type)
             probabilities.append(probability)
-            tasks.append(row['To'])
+            tasks.append(row['to'])
 
         # Normalize probabilities to cumulative distribution
         cumulative_probabilities = []
@@ -185,7 +183,7 @@ def complete_activity(token_id, task_name, current_time, simulation_metrics, act
     else:
         # Non-Gateway: Schedule all outgoing transitions
         for _, row in next_tasks.iterrows():
-            next_task = row['To']
+            next_task = row['to']
             if next_task not in active_tokens[token_id]['completed_tasks']:
                 heapq.heappush(event_queue, Event(current_time, token_id, next_task, 'start'))
                 logging.info(f"Token {token_id} scheduled for next task '{next_task}' at {current_time}")
@@ -213,13 +211,17 @@ def discrete_event_simulation(max_arrival_count, arrival_interval_minutes, simul
                               start_time, xpdl_file_path, transitions_df, start_tasks):
     simulation_end_date = start_time + timedelta(days=simulation_days)
 
-    resource_busy_periods = {resource: [] for resource in simulation_metrics['Resource'].dropna().unique()}
+    # Normalize column names to lowercase for consistency
+    simulation_metrics.columns = map(str.lower, simulation_metrics.columns)
+
+    # Prepare resource-related dictionaries with lowercase keys
+    resource_busy_periods = {resource: [] for resource in simulation_metrics['resource'].dropna().unique()}
     activity_processing_times = {}
     event_queue = []
     active_tokens = {}
     completed_tokens = []  # New list for completed tokens
     active_resources = {resource: 0 for resource in resource_busy_periods.keys()}
-    available_resources = simulation_metrics.set_index('Resource')['Available Resources'].to_dict()
+    available_resources = simulation_metrics.set_index('resource')['available resources'].to_dict()
     resource_wait_queue = {resource: [] for resource in resource_busy_periods.keys()}
 
     # Schedule tokens

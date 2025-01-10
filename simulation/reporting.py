@@ -7,6 +7,9 @@ def save_simulation_report(activity_processing_times, resource_utilization, tota
     base_filename = os.path.splitext(os.path.basename(xpdl_file_path))[0]
     output_path = f"{base_filename}_results.xlsx"
 
+    # Normalize column names in transitions_df to lowercase
+    transitions_df.columns = map(str.lower, transitions_df.columns)
+
     # Calculate process-level metrics
     if completed_tokens:
         process_durations = [
@@ -49,10 +52,10 @@ def save_simulation_report(activity_processing_times, resource_utilization, tota
         tokens_started = data.get("tokens_started", 0)
         tokens_completed = data.get("tokens_completed", 0)
 
-        activity_type = transitions_df.loc[transitions_df['From'] == activity, 'Type'].values
+        activity_type = transitions_df.loc[transitions_df['from'] == activity, 'type'].values
         activity_type = activity_type[0] if activity_type.size > 0 else "Unknown"
 
-        if "CONDITION" in activity_type.upper():
+        if "condition" in activity_type.lower():
             activity_type = "Gateway"
 
         min_time = round(min(durations), 2) if durations else 0
@@ -94,6 +97,9 @@ def print_processing_times_and_utilization(activity_processing_times, resource_b
     total_simulation_time = max((simulation_end_date - start_time).total_seconds() / 3600, 0)
     resource_utilization = {}
 
+    # Normalize column names in transitions_df to lowercase
+    transitions_df.columns = map(str.lower, transitions_df.columns)
+
     # Log structure of activity_processing_times for debugging
     logging.info(f"Activity processing times structure: {activity_processing_times}")
 
@@ -121,18 +127,6 @@ def print_processing_times_and_utilization(activity_processing_times, resource_b
     # Calculate and print resource utilization
     print("\nResource Utilization:")
     for resource, periods in resource_busy_periods.items():
-        # Get the activity type for this resource
-        is_gateway = False
-        for activity, data in activity_processing_times.items():
-            activity_type = transitions_df.loc[transitions_df['From'] == activity, 'Type'].values
-            activity_type = activity_type[0] if activity_type.size > 0 else "Unknown"
-            if activity_type == "Gateway":
-                is_gateway = True
-                break
-
-        if is_gateway:
-            continue
-
         total_busy_time = sum(
             (end - start).total_seconds() for start, end in periods if start and end
         )
