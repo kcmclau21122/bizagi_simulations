@@ -12,9 +12,9 @@ import random
 
 def main():
     simulation_metrics_path = './Bizagi/simulation_metrics.xlsx'
-    xpdl_file_path = './Bizagi/5.5_1/5.5.13 Real Property-Monthly_Reviews/5.5.13 Real Property-Monthly Reviews-1.xpdl'
-    #xpdl_file_path = './Bizagi/5.5_1/5.5.13 Real Property-Monthly_Reviews/5.5.13 Real Property-Monthly Reviews-2.xpdl'
-    #xpdl_file_path = './Bizagi/5.5_1/5.5.13 Real Property-Monthly_Reviews/5.5.13 Real Property-Monthly Reviews-Link.xpdl'
+    xpdl_file_path = './Bizagi/5.5_1/5.5.13 Real Property-Monthly Reviews-1.xpdl'
+    #xpdl_file_path = './Bizagi/5.5_1/5.5.13 Real Property-Monthly Reviews-2.xpdl'
+    #xpdl_file_path = './Bizagi/5.5_1/5.5.13 Real Property-Monthly Reviews-Link.xpdl'
     output_sequences_path = 'output_sequences.txt'
 
     simulation_days = 2
