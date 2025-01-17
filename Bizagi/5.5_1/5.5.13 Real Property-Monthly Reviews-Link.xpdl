@@ -4,7 +4,7 @@
     <XPDLVersion>2.2</XPDLVersion>
     <Vendor>Bizagi Process Modeler.</Vendor>
     <Created>2023-10-03T07:33:39.8319043-04:00</Created>
-    <ModificationDate>2025-01-17T06:40:02.4993345-05:00</ModificationDate>
+    <ModificationDate>2025-01-17T09:51:29.4550036-05:00</ModificationDate>
     <Description>5.5.13 Real Property-Monthly Reviews-Link</Description>
     <Documentation />
   </PackageHeader>
@@ -123,7 +123,7 @@
   <WorkflowProcesses>
     <WorkflowProcess Id="b3e18d09-5d3b-450f-b494-e227eb6feacf" Name="Main Process">
       <ProcessHeader>
-        <Created>2025-01-17T06:40:33.2044042-05:00</Created>
+        <Created>2025-01-17T09:51:52.3468679-05:00</Created>
         <Description />
       </ProcessHeader>
       <RedefinableHeader>
@@ -139,7 +139,7 @@
     </WorkflowProcess>
     <WorkflowProcess Id="9164ffc5-a35b-4451-880c-a4903a70630b" Name="Real Property-Monthly Reviews (5.5.13)">
       <ProcessHeader>
-        <Created>2025-01-17T06:40:33.2044042-05:00</Created>
+        <Created>2025-01-17T09:51:52.3468679-05:00</Created>
         <Description>&lt;p style="text-align:left;text-indent:0pt;margin:0pt 0pt 0pt 0pt;"&gt;&lt;a name="_dx_frag_StartFragment"&gt;&lt;/a&gt;&lt;span style="color:#000000;background-color:#FFFFFF;font-family:'Times New Roman';font-size:12pt;font-weight:normal;font-style:normal;"&gt;(U) On a monthly basis, the Asset Management Accountant reviews the AM module of FACTS for completeness and accuracy.&lt;/span&gt;&lt;a name="_dx_frag_EndFragment"&gt;&lt;/a&gt;&lt;span style="color:#000000;background-color:transparent;font-family:'Segoe UI';font-size:11pt;font-weight:normal;font-style:normal;"&gt; &lt;/span&gt;&lt;/p&gt;</Description>
       </ProcessHeader>
       <RedefinableHeader>
@@ -218,8 +218,6 @@
             <InputSet>
               <Input ArtifactId="a8d4f5b5-9009-49cf-acb2-fb601c3c737d" />
               <Input ArtifactId="c8def1d6-d7f4-4e5f-9912-bdb19e2f1449" />
-              <Input ArtifactId="f641fd05-ca5f-4209-a693-463ac566f0fb" />
-              <Input ArtifactId="46560b65-f39c-4fda-ad17-d7a02d77059f" />
             </InputSet>
           </InputSets>
           <OutputSets />
@@ -259,7 +257,6 @@
           <OutputSets>
             <OutputSet>
               <Output ArtifactId="62c0ce5e-9622-4610-9a7c-7a238d7c7d95" />
-              <Output ArtifactId="faa922a6-15d7-431d-9f10-89b2a85f4c83" />
             </OutputSet>
           </OutputSets>
           <Loop LoopType="None" />
@@ -320,7 +317,6 @@
           <OutputSets>
             <OutputSet>
               <Output ArtifactId="955a7c32-d4a8-42cd-913b-c2dd7d15b768" />
-              <Output ArtifactId="77e07878-5452-4c3d-9a51-2310c2f60e7e" />
             </OutputSet>
           </OutputSets>
           <Loop LoopType="None" />

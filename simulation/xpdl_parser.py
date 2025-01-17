@@ -27,11 +27,28 @@ def parse_xpdl_to_sequences(xpdl_file_path, output_file_path):
     activities = {}
     transitions = {}
 
-    # Extract all activities
+    # Enhanced parsing logic to handle StartEvent
     for activity in root.findall(".//xpdl:Activity", namespaces):
         activity_id = activity.get("Id")
         activity_name = clean_name(activity.get("Name"))
+
+        # Check for StartEvent within Event
+        event = activity.find(".//xpdl:Event/xpdl:StartEvent", namespaces)
+        if event is not None:
+            activity_name += " [Type: Start]"
+
+        # Check for gateway attributes
+        route = activity.find(".//xpdl:Route", namespaces)
+        if route is not None:
+            gateway_type = route.get("GatewayType")
+            gateway_direction = route.get("GatewayDirection")
+            if gateway_type == "Inclusive":
+                activity_name += " [Inclusive Gateway]"
+            elif gateway_direction == "Diverging":
+                activity_name += " [Exclusive Gateway]"
+
         activities[activity_id] = activity_name
+
 
     # Extract all transitions with conditions
     for transition in root.findall(".//xpdl:Transition", namespaces):
@@ -51,14 +68,29 @@ def parse_xpdl_to_sequences(xpdl_file_path, output_file_path):
             transitions[from_id] = []
         transitions[from_id].append((to_id, to_activity, condition_type))
 
+    # Store the last Type for each activity
+    activity_types = {}
+
     # Build sequence rows for output
     sequence_rows = []
     for from_id, to_transitions in transitions.items():
         from_activity = activities.get(from_id, f"Unknown({from_id})")
         for to_id, to_activity, condition in to_transitions:
+            # Use or update the last known Type for the from_activity
+            if from_activity in activity_types:
+                from_activity_with_type = f"{from_activity} [Type: {activity_types[from_activity]}]"
+            else:
+                from_activity_with_type = f"{from_activity} [Type: {condition}]"
+                activity_types[from_activity] = condition
+
+            # Always update and use the Type for the to_activity
+            to_activity_with_type = f"{to_activity} [Type: {condition}]"
+            activity_types[to_activity] = condition
+
+            # Append the row to the sequence
             sequence_rows.append({
-                "From": from_activity,
-                "To": to_activity,
+                "From": from_activity_with_type,
+                "To": to_activity_with_type,
                 "Type": condition
             })
 
@@ -66,7 +98,7 @@ def parse_xpdl_to_sequences(xpdl_file_path, output_file_path):
     sequences_df = pd.DataFrame(sequence_rows)
     with open(output_file_path, 'w') as file:
         for _, row in sequences_df.iterrows():
-            file.write(f"{row['From']} -> {row['To']} [Type: {row['Type']}]\n")
+            file.write(f"{row['From']} -> {row['To']}\n")
     
     return sequences_df
 
@@ -74,7 +106,7 @@ def parse_xpdl_to_sequences(xpdl_file_path, output_file_path):
 #xpdl_file_path = './Bizagi/5.5_1/5.5.13 Real Property-Monthly Reviews-1.xpdl'
 #xpdl_file_path = './Bizagi/5.5_1/5.5.13 Real Property-Monthly Reviews-2.xpdl'
 #xpdl_file_path = './Bizagi/5.5_1/5.5.13 Real Property-Monthly Reviews-Link.xpdl'
-xpdl_file_path = './Bizagi/5.5_1/5.5.13 Real Property-Monthly Reviews-Inclusive.xpdl'
+#xpdl_file_path = './Bizagi/5.5_1/5.5.13 Real Property-Monthly Reviews-Inclusive.xpdl'
 xpdl_file_path = './Bizagi/5.5_1/5.5.13 Real Property-Monthly Reviews-Parallel.xpdl'
 output_sequences_path = 'output_sequences.txt'
 parse_xpdl_to_sequences(xpdl_file_path, output_sequences_path)
