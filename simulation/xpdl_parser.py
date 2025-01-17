@@ -71,6 +71,10 @@ def parse_xpdl_to_sequences(xpdl_file_path, output_file_path):
     return sequences_df
 
 # Example usage
- #xpdl_file_path = "path_to_xpdl_file.xpdl"
- #output_file_path = "output_sequences.txt"
- #parse_xpdl_to_sequences(xpdl_file_path, output_file_path)
+#xpdl_file_path = './Bizagi/5.5_1/5.5.13 Real Property-Monthly Reviews-1.xpdl'
+#xpdl_file_path = './Bizagi/5.5_1/5.5.13 Real Property-Monthly Reviews-2.xpdl'
+#xpdl_file_path = './Bizagi/5.5_1/5.5.13 Real Property-Monthly Reviews-Link.xpdl'
+xpdl_file_path = './Bizagi/5.5_1/5.5.13 Real Property-Monthly Reviews-Inclusive.xpdl'
+xpdl_file_path = './Bizagi/5.5_1/5.5.13 Real Property-Monthly Reviews-Parallel.xpdl'
+output_sequences_path = 'output_sequences.txt'
+parse_xpdl_to_sequences(xpdl_file_path, output_sequences_path)

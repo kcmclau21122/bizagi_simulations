@@ -4,7 +4,7 @@
     <XPDLVersion>2.2</XPDLVersion>
     <Vendor>Bizagi Process Modeler.</Vendor>
     <Created>2023-10-03T07:33:39.8319043-04:00</Created>
-    <ModificationDate>2025-01-11T11:45:41.9635303-05:00</ModificationDate>
+    <ModificationDate>2025-01-17T06:40:02.4852471-05:00</ModificationDate>
     <Description>5.5.13 Real Property-Monthly Reviews-1</Description>
     <Documentation />
   </PackageHeader>
@@ -122,7 +122,7 @@
   <WorkflowProcesses>
     <WorkflowProcess Id="04fbd1ee-f911-4808-af5b-05398c217dce" Name="Main Process">
       <ProcessHeader>
-        <Created>2025-01-11T15:53:52.935318-05:00</Created>
+        <Created>2025-01-17T06:40:33.1993102-05:00</Created>
         <Description />
       </ProcessHeader>
       <RedefinableHeader>
@@ -138,7 +138,7 @@
     </WorkflowProcess>
     <WorkflowProcess Id="aab1bc31-0556-4874-9a3b-ee48ac3c0fc4" Name="Real Property-Monthly Reviews (5.5.13)">
       <ProcessHeader>
-        <Created>2025-01-11T15:53:52.936318-05:00</Created>
+        <Created>2025-01-17T06:40:33.2003104-05:00</Created>
         <Description>&lt;p style="text-align:left;text-indent:0pt;margin:0pt 0pt 0pt 0pt;"&gt;&lt;a name="_dx_frag_StartFragment"&gt;&lt;/a&gt;&lt;span style="color:#000000;background-color:#FFFFFF;font-family:'Times New Roman';font-size:12pt;font-weight:normal;font-style:normal;"&gt;(U) On a monthly basis, the Asset Management Accountant reviews the AM module of FACTS for completeness and accuracy.&lt;/span&gt;&lt;a name="_dx_frag_EndFragment"&gt;&lt;/a&gt;&lt;span style="color:#000000;background-color:transparent;font-family:'Segoe UI';font-size:11pt;font-weight:normal;font-style:normal;"&gt; &lt;/span&gt;&lt;/p&gt;</Description>
       </ProcessHeader>
       <RedefinableHeader>
@@ -474,9 +474,8 @@
             <ConnectorGraphicsInfo ToolId="BizAgi_Process_Modeler" BorderColor="-16777216">
               <TextDirection xsi:nil="true" />
               <Coordinates XCoordinate="445" YCoordinate="314" />
-              <Coordinates XCoordinate="488" YCoordinate="314" />
-              <Coordinates XCoordinate="488" YCoordinate="189" />
-              <Coordinates XCoordinate="531" YCoordinate="189" />
+              <Coordinates XCoordinate="576" YCoordinate="314" />
+              <Coordinates XCoordinate="576" YCoordinate="219" />
             </ConnectorGraphicsInfo>
           </ConnectorGraphicsInfos>
           <ExtendedAttributes />

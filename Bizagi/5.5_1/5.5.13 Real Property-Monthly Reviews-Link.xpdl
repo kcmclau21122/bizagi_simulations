@@ -4,7 +4,7 @@
     <XPDLVersion>2.2</XPDLVersion>
     <Vendor>Bizagi Process Modeler.</Vendor>
     <Created>2023-10-03T07:33:39.8319043-04:00</Created>
-    <ModificationDate>2024-12-11T12:06:08.9687451-05:00</ModificationDate>
+    <ModificationDate>2025-01-17T06:40:02.4993345-05:00</ModificationDate>
     <Description>5.5.13 Real Property-Monthly Reviews-Link</Description>
     <Documentation />
   </PackageHeader>
@@ -15,14 +15,14 @@
   </RedefinableHeader>
   <ExternalPackages />
   <Participants>
-    <Participant Id="91579980-0b21-4677-9039-d6286105bbb5" Name="Tech">
+    <Participant Id="dffdc011-2586-4a2e-8d62-26f2fa60d256" Name="Tech">
       <ParticipantType Type="ROLE" />
       <Description />
       <ExtendedAttributes>
         <ExtendedAttribute Name="Tech" />
       </ExtendedAttributes>
     </Participant>
-    <Participant Id="6fdcc002-932e-47f3-b59d-9d6c3824d096" Name="Certifier">
+    <Participant Id="9c953876-a650-4581-bd21-f1ce0df2fed6" Name="Certifier">
       <ParticipantType Type="ROLE" />
       <Description />
       <ExtendedAttributes>
@@ -43,7 +43,7 @@
     </DataStore>
   </DataStores>
   <Pools>
-    <Pool Id="93f27000-f14d-4c45-9e5f-37bf2162bf13" Name="Main Process" Process="6fbd6ebb-61ca-4268-a9e9-0aa895175595" BoundaryVisible="false">
+    <Pool Id="93f27000-f14d-4c45-9e5f-37bf2162bf13" Name="Main Process" Process="b3e18d09-5d3b-450f-b494-e227eb6feacf" BoundaryVisible="false">
       <Lanes />
       <NodeGraphicsInfos>
         <NodeGraphicsInfo ToolId="BizAgi_Process_Modeler" Height="350" Width="700" BorderColor="-16777216" FillColor="-1">
@@ -52,11 +52,11 @@
         </NodeGraphicsInfo>
       </NodeGraphicsInfos>
     </Pool>
-    <Pool Id="08905724-f281-4b2e-8c53-17a8678eab2c" Name="Real Property-Monthly Reviews (5.5.13)" Process="3d3e8c54-867b-4970-b57b-64b72eb988df" BoundaryVisible="true">
+    <Pool Id="08905724-f281-4b2e-8c53-17a8678eab2c" Name="Real Property-Monthly Reviews (5.5.13)" Process="9164ffc5-a35b-4451-880c-a4903a70630b" BoundaryVisible="true">
       <Lanes>
         <Lane Id="169f8be4-f47b-4dc2-a7d2-12e95351c23a" Name="Asset Management Accountant" ParentPool="08905724-f281-4b2e-8c53-17a8678eab2c">
           <NodeGraphicsInfos>
-            <NodeGraphicsInfo ToolId="BizAgi_Process_Modeler" Height="440" Width="1123" BorderColor="-11513776" FillColor="-1">
+            <NodeGraphicsInfo ToolId="BizAgi_Process_Modeler" Height="581" Width="1123" BorderColor="-11513776" FillColor="-1">
               <Coordinates XCoordinate="50" YCoordinate="0" />
               <TextDirection xsi:nil="true" />
             </NodeGraphicsInfo>
@@ -65,7 +65,7 @@
         </Lane>
       </Lanes>
       <NodeGraphicsInfos>
-        <NodeGraphicsInfo ToolId="BizAgi_Process_Modeler" Height="440" Width="1173" BorderColor="-16777216" FillColor="-1">
+        <NodeGraphicsInfo ToolId="BizAgi_Process_Modeler" Height="581" Width="1173" BorderColor="-16777216" FillColor="-1">
           <Coordinates XCoordinate="40" YCoordinate="40" />
           <TextDirection xsi:nil="true" />
         </NodeGraphicsInfo>
@@ -121,9 +121,9 @@
     </Association>
   </Associations>
   <WorkflowProcesses>
-    <WorkflowProcess Id="6fbd6ebb-61ca-4268-a9e9-0aa895175595" Name="Main Process">
+    <WorkflowProcess Id="b3e18d09-5d3b-450f-b494-e227eb6feacf" Name="Main Process">
       <ProcessHeader>
-        <Created>2024-12-11T12:06:35.3341935-05:00</Created>
+        <Created>2025-01-17T06:40:33.2044042-05:00</Created>
         <Description />
       </ProcessHeader>
       <RedefinableHeader>
@@ -137,9 +137,9 @@
         <ExtendedAttribute Name="RuntimeProperties" Value="{&quot;processClassProperties&quot;:{&quot;displayName&quot;:&quot;Main Process&quot;,&quot;accessType&quot;:&quot;Process&quot;,&quot;order&quot;:1,&quot;useParentCaseNumber&quot;:true,&quot;enableAlarms&quot;:true,&quot;enableNotifications&quot;:true,&quot;creationDate&quot;:&quot;2023-10-03T07:33:39.8476385-04:00&quot;},&quot;processProperties&quot;:{&quot;version&quot;:{&quot;numberVersion&quot;:&quot;1.0&quot;,&quot;isActive&quot;:true},&quot;versionCreationDate&quot;:&quot;2023-10-03T07:33:39.8476385-04:00&quot;,&quot;supportsScopes&quot;:true,&quot;caseAccessType&quot;:&quot;Public&quot;,&quot;renderVersion&quot;:2,&quot;formsVersion&quot;:0}}" />
       </ExtendedAttributes>
     </WorkflowProcess>
-    <WorkflowProcess Id="3d3e8c54-867b-4970-b57b-64b72eb988df" Name="Real Property-Monthly Reviews (5.5.13)">
+    <WorkflowProcess Id="9164ffc5-a35b-4451-880c-a4903a70630b" Name="Real Property-Monthly Reviews (5.5.13)">
       <ProcessHeader>
-        <Created>2024-12-11T12:06:35.3346957-05:00</Created>
+        <Created>2025-01-17T06:40:33.2044042-05:00</Created>
         <Description>&lt;p style="text-align:left;text-indent:0pt;margin:0pt 0pt 0pt 0pt;"&gt;&lt;a name="_dx_frag_StartFragment"&gt;&lt;/a&gt;&lt;span style="color:#000000;background-color:#FFFFFF;font-family:'Times New Roman';font-size:12pt;font-weight:normal;font-style:normal;"&gt;(U) On a monthly basis, the Asset Management Accountant reviews the AM module of FACTS for completeness and accuracy.&lt;/span&gt;&lt;a name="_dx_frag_EndFragment"&gt;&lt;/a&gt;&lt;span style="color:#000000;background-color:transparent;font-family:'Segoe UI';font-size:11pt;font-weight:normal;font-style:normal;"&gt; &lt;/span&gt;&lt;/p&gt;</Description>
       </ProcessHeader>
       <RedefinableHeader>
@@ -212,14 +212,14 @@
               <TaskUser Implementation="Unspecified" />
             </Task>
           </Implementation>
-          <Performers>
-            <Performer>91579980-0b21-4677-9039-d6286105bbb5</Performer>
-          </Performers>
+          <Performers />
           <Documentation>&lt;p style="text-align:left;text-indent:0pt;margin:0pt 0pt 0pt 0pt;"&gt;&lt;span style="color:#000000;background-color:transparent;font-family:'Segoe UI';font-size:11pt;font-weight:normal;font-style:normal;"&gt;(U) &lt;/span&gt;&lt;a name="_dx_frag_StartFragment"&gt;&lt;/a&gt;&lt;span style="color:#000000;background-color:transparent;font-family:'Microsoft Sans Serif';font-size:12pt;font-weight:normal;font-style:normal;"&gt;Specifically, the Asset Management Accountant uses the Asset Change Tracker to confirm that only active assets are present in the asset accounts, thus affirming that all disposed assets were removed. The Asset Management Accountant also confirms that each of the assets that were disposed have their associated costs and losses correctly recorded in the corresponding accounts. &lt;/span&gt;&lt;a name="_dx_frag_EndFragment"&gt;&lt;/a&gt;&lt;/p&gt;&lt;p style="text-align:left;text-indent:0pt;margin:0pt 0pt 0pt 0pt;"&gt;&lt;span style="color:#000000;background-color:transparent;font-family:'Segoe UI';font-size:11pt;font-weight:normal;font-style:normal;"&gt;&amp;nbsp;&lt;/span&gt;&lt;/p&gt;</Documentation>
           <InputSets>
             <InputSet>
               <Input ArtifactId="a8d4f5b5-9009-49cf-acb2-fb601c3c737d" />
               <Input ArtifactId="c8def1d6-d7f4-4e5f-9912-bdb19e2f1449" />
+              <Input ArtifactId="f641fd05-ca5f-4209-a693-463ac566f0fb" />
+              <Input ArtifactId="46560b65-f39c-4fda-ad17-d7a02d77059f" />
             </InputSet>
           </InputSets>
           <OutputSets />
@@ -253,14 +253,13 @@
               <TaskManual />
             </Task>
           </Implementation>
-          <Performers>
-            <Performer>91579980-0b21-4677-9039-d6286105bbb5</Performer>
-          </Performers>
+          <Performers />
           <Documentation>&lt;p style="text-align:left;text-indent:0pt;margin:0pt 0pt 0pt 0pt;"&gt;&lt;span style="color:#000000;background-color:transparent;font-family:'Segoe UI';font-size:11pt;font-weight:normal;font-style:normal;"&gt;(U) &lt;/span&gt;&lt;a name="_dx_frag_StartFragment"&gt;&lt;/a&gt;&lt;span style="color:#000000;background-color:transparent;font-family:'Times New Roman';font-size:12pt;font-weight:normal;font-style:normal;"&gt;If complete and accurate, the Asset Management Accountant denotes this in the Asset Change Tracker. The purpose of the Asset Change Tracker is to track changes to Real Property assets in GL accounts 173000, 174000, and 182000 to ensure resulting system entries are correct. During normal operations, real property assets can undergo several types of changes, to include disposal, re-entry, and updates to cost, useful life, profile ID or category. When any of these changes occur, the asset will be tracked in the Asset Change Tracker with pertinent information including, but not limited to the type of change, date of change, current Asset ID, new Asset ID, reason for change, and FACTS ticket&amp;nbsp;&amp;nbsp;&lt;/span&gt;&lt;/p&gt;&lt;p style="text-align:left;text-indent:0pt;margin:0pt 0pt 0pt 0pt;"&gt;&lt;span style="color:#000000;background-color:transparent;font-family:'Times New Roman';font-size:12pt;font-weight:normal;font-style:normal;"&gt;number, if applicable. &lt;/span&gt;&lt;a name="_dx_frag_EndFragment"&gt;&lt;/a&gt;&lt;/p&gt;&lt;p style="text-align:left;text-indent:0pt;margin:0pt 0pt 0pt 0pt;"&gt;&lt;span style="color:#000000;background-color:transparent;font-family:'Segoe UI';font-size:11pt;font-weight:normal;font-style:normal;"&gt;&amp;nbsp;&lt;/span&gt;&lt;/p&gt;</Documentation>
           <InputSets />
           <OutputSets>
             <OutputSet>
               <Output ArtifactId="62c0ce5e-9622-4610-9a7c-7a238d7c7d95" />
+              <Output ArtifactId="faa922a6-15d7-431d-9f10-89b2a85f4c83" />
             </OutputSet>
           </OutputSets>
           <Loop LoopType="None" />
@@ -281,9 +280,7 @@
               <TaskUser Implementation="Unspecified" />
             </Task>
           </Implementation>
-          <Performers>
-            <Performer>91579980-0b21-4677-9039-d6286105bbb5</Performer>
-          </Performers>
+          <Performers />
           <Documentation>&lt;p style="text-align:left;text-indent:0pt;margin:0pt 0pt 0pt 0pt;"&gt;&lt;span style="color:#000000;background-color:transparent;font-family:'Segoe UI';font-size:11pt;font-weight:normal;font-style:normal;"&gt;(U) &lt;/span&gt;&lt;a name="_dx_frag_StartFragment"&gt;&lt;/a&gt;&lt;span style="color:#000000;background-color:transparent;font-family:'Microsoft Sans Serif';font-size:12pt;font-weight:normal;font-style:normal;"&gt;If not complete and accurate, the Asset Management Accountant works with the REO Real Property Officer to understand the discrepancy&lt;/span&gt;&lt;a name="_dx_frag_EndFragment"&gt;&lt;/a&gt;&lt;span style="color:#000000;background-color:transparent;font-family:'Segoe UI';font-size:11pt;font-weight:normal;font-style:normal;"&gt; &lt;/span&gt;&lt;/p&gt;</Documentation>
           <Loop LoopType="Standard">
             <LoopStandard LoopCounter="0" LoopMaximum="0" />
@@ -317,14 +314,13 @@
               <TaskUser Implementation="Unspecified" />
             </Task>
           </Implementation>
-          <Performers>
-            <Performer>6fdcc002-932e-47f3-b59d-9d6c3824d096</Performer>
-          </Performers>
+          <Performers />
           <Documentation>&lt;p style="text-align:left;text-indent:0pt;margin:0pt 0pt 0pt 0pt;"&gt;&lt;span style="color:#000000;background-color:transparent;font-family:'Segoe UI';font-size:11pt;font-weight:normal;font-style:normal;"&gt;(U) &lt;/span&gt;&lt;a name="_dx_frag_StartFragment"&gt;&lt;/a&gt;&lt;span style="color:#000000;background-color:transparent;font-family:'Segoe UI';font-size:11pt;font-weight:normal;font-style:normal;"&gt;The Asset Management Accountant&lt;/span&gt;&lt;span style="color:#000000;background-color:#FFFFFF;font-family:'Times New Roman';font-size:12pt;font-weight:normal;font-style:normal;"&gt; creates a manual journal entry to correct the issue. &lt;/span&gt;&lt;span style="color:#000000;background-color:#FFFFFF;font-family:'Microsoft Sans Serif';font-size:12pt;font-weight:normal;font-style:normal;"&gt;&amp;nbsp;&lt;br/&gt;&amp;nbsp;&lt;br/&gt;&lt;/span&gt;&lt;a name="_dx_frag_EndFragment"&gt;&lt;/a&gt;&lt;span style="color:#000000;background-color:transparent;font-family:'Segoe UI';font-size:11pt;font-weight:normal;font-style:normal;"&gt;&amp;nbsp;&lt;/span&gt;&lt;/p&gt;</Documentation>
           <InputSets />
           <OutputSets>
             <OutputSet>
               <Output ArtifactId="955a7c32-d4a8-42cd-913b-c2dd7d15b768" />
+              <Output ArtifactId="77e07878-5452-4c3d-9a51-2310c2f60e7e" />
             </OutputSet>
           </OutputSets>
           <Loop LoopType="None" />
