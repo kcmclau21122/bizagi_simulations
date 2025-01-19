@@ -3,7 +3,7 @@
 
 from simulation.simulation import discrete_event_simulation
 from simulation.utils import get_simulation_parameters
-from simulation.data_handler import read_output_sequences, build_paths
+from simulation.data_handler import read_output_sequences, build_paths, extract_start_tasks
 from simulation.reporting import save_simulation_report
 from simulation.xpdl_parser import parse_xpdl_to_sequences
 import pandas as pd
@@ -32,17 +32,12 @@ def main():
     transitions_df = read_output_sequences(output_sequences_path)
     transitions_df.columns = map(str.lower, transitions_df.columns)
 
-    paths = build_paths(transitions_df)
+    paths = build_paths(output_sequences_path)
+    #paths = build_paths(transitions_df)
 
     # Extract start tasks from paths
-    start_tasks = set()
-    for path in paths:
-        if path:  # Ensure the path is not empty
-            first_activity = path[0].split("->")[0].strip()  # Get the first part before "->"
-            if "[type: start]" in first_activity.lower():
-                activity_name = first_activity.split("[type:")[0].strip()  # Extract activity name
-                start_tasks.add(activity_name)
-
+    start_tasks = extract_start_tasks(paths)
+    
     # Get simulation parameters
     max_arrival_count, arrival_interval_minutes = get_simulation_parameters(simulation_metrics)
 

@@ -1,5 +1,6 @@
 # simulation/data_handler.py
 import pandas as pd
+from collections import defaultdict
 import logging
 
 def read_output_sequences(file_path):
@@ -69,7 +70,7 @@ def remove_duplicate_activities(path):
     return unique_path
 
 
-def build_paths(df):
+def build_paths_old(df):
     paths = []
 
     def traverse(current_task, current_path):
@@ -99,3 +100,83 @@ def build_paths(df):
     cleaned_paths = [remove_duplicate_activities(path) for path in paths]
 
     return cleaned_paths
+
+# Define the function to build paths
+from collections import defaultdict
+
+def build_paths(file_path):
+    # Read the file
+    with open(file_path, 'r') as file:
+        lines = [line.strip() for line in file.readlines()]
+
+    # Parse the "from" and "to" activities from the lines
+    connections = []
+    for line in lines:
+        from_activity = line.split(' -> ')[0]
+        to_part = line.split(' -> ')[1]
+        to_activity = to_part[:to_part.index(' [')]
+        connections.append((from_activity, to_activity))
+
+    # Build a mapping from "from" activities to "to" activities
+    adjacency_list = defaultdict(list)
+    for from_activity, to_activity in connections:
+        adjacency_list[from_activity].append(to_activity)
+
+    # Find the start activity
+    start_activity = next((activity for activity in adjacency_list.keys() if "[Type: Start]" in activity), None)
+    if not start_activity:
+        raise ValueError("No start activity found in the input file.")
+
+    # Recursive function to build paths
+    def dfs(current_path, all_paths):
+        last_activity = current_path[-1]
+
+        # If the current activity is a stop activity, save the path
+        if "[Type: Stop]" in last_activity:
+            all_paths.append(current_path)
+            return
+
+        # Explore next activities
+        if last_activity in adjacency_list:  # Check for valid transitions
+            for next_activity in adjacency_list[last_activity]:
+                if next_activity not in current_path:  # Prevent loops
+                    dfs(current_path + [next_activity], all_paths)
+        else:
+            # Dead-end case: save the path
+            all_paths.append(current_path)
+
+    # Initialize the DFS
+    all_paths = []
+    dfs([start_activity], all_paths)
+
+    # Debugging output for verification
+    print(f"Start Activity: {start_activity}")
+    print(f"Adjacency List: {dict(adjacency_list)}")
+    print(f"All Paths: {all_paths}")
+
+    # Convert the results to a DataFrame
+    if all_paths:  # Ensure there are paths to process
+        path_data = {"Path Index": [], "Activity": [], "Type": []}
+        for index, path in enumerate(all_paths):
+            for activity in path:
+                path_data["Path Index"].append(index)
+                path_data["Activity"].append(activity)
+                # Extract the type from the activity string
+                activity_type = activity[activity.index("["):activity.index("]") + 1] if "[" in activity and "]" in activity else "[Unknown]"
+                path_data["Type"].append(activity_type)
+        df = pd.DataFrame(path_data)
+    else:
+        df = pd.DataFrame(columns=["Path Index", "Activity", "Type"])  # Empty DataFrame in case of no paths
+
+    return df
+
+# Extract start tasks from paths DataFrame
+def extract_start_tasks(paths):
+    start_tasks = set()
+    grouped = paths.groupby("Path Index")  # Group by path index
+    for _, group in grouped:
+        first_activity = group.iloc[0]["Activity"]  # Get the first activity in each path
+        if "[type: start]" in first_activity.lower():
+            activity_name = first_activity.split("[type:")[0].strip()  # Extract activity name
+            start_tasks.add(activity_name)
+    return start_tasks
