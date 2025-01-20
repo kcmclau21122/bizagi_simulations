@@ -3,7 +3,7 @@
 
 from simulation.simulation import discrete_event_simulation
 from simulation.utils import get_simulation_parameters
-from simulation.data_handler import read_output_sequences, build_paths, extract_start_tasks
+from simulation.data_handler import build_paths, extract_start_tasks, build_sequence_df
 from simulation.reporting import save_simulation_report
 from simulation.xpdl_parser import parse_xpdl_to_sequences
 import pandas as pd
@@ -12,9 +12,10 @@ import random
 
 def main():
     simulation_metrics_path = './Bizagi/simulation_metrics.xlsx'
-    xpdl_file_path = './Bizagi/5.5_1/5.5.13 Real Property-Monthly Reviews-1.xpdl'
+    #xpdl_file_path = './Bizagi/5.5_1/5.5.13 Real Property-Monthly Reviews-1.xpdl'
     #xpdl_file_path = './Bizagi/5.5_1/5.5.13 Real Property-Monthly Reviews-2.xpdl'
     #xpdl_file_path = './Bizagi/5.5_1/5.5.13 Real Property-Monthly Reviews-Link.xpdl'
+    xpdl_file_path = './Bizagi/5.5_1/5.5.13 Real Property-Monthly Reviews-Parallel.xpdl'
     output_sequences_path = 'output_sequences.txt'
 
     simulation_days = 2
@@ -29,11 +30,22 @@ def main():
     # Normalize column names to lowercase
     simulation_metrics.columns = map(str.lower, simulation_metrics.columns)
 
-    transitions_df = read_output_sequences(output_sequences_path)
-    transitions_df.columns = map(str.lower, transitions_df.columns)
+    #transitions_df = read_output_sequences(output_sequences_path)
+    #transitions_df.columns = map(str.lower, transitions_df.columns)
+    transitions_df = []
 
-    paths = build_paths(output_sequences_path)
-    #paths = build_paths(transitions_df)
+    # Transform the output_sequneces.txt file to a dataframe 
+    df_path_sequences = build_sequence_df(output_sequences_path)
+
+    # Build the process paths and sub-paths
+    paths = build_paths(df_path_sequences)
+
+    # Write paths DataFrame to simulation_log.txt
+    with open("simulation_log.txt", "w") as log_file:
+        log_file.write("df_path_sequences:\n")
+        log_file.write(df_path_sequences.to_string(index=False))
+        log_file.write("\n\npaths:\n")
+        log_file.write(paths.to_string(index=False))
 
     # Extract start tasks from paths
     start_tasks = extract_start_tasks(paths)

@@ -55,13 +55,13 @@ def parse_xpdl_to_sequences(xpdl_file_path, output_file_path):
     for transition in root.findall(".//xpdl:Transition", namespaces):
         from_id = transition.get("From")
         to_id = transition.get("To")
-        transition_name = transition.get("Name", "Unknown")  # Extract the transition name (e.g., "Yes", "No")
+        transition_name = transition.get("Name", "").strip()  # Extract the transition name
 
         # Assign condition_type based on transition_name
-        if transition_name != "Unknown":
+        if transition_name:
             condition_type = f"CONDITION-{transition_name}"
         else:
-            condition_type = "Activity Step"
+            condition_type = "Activity Step"  # Default to Activity Step if Name is empty
 
         # Handle "Unknown" activities for To
         to_activity = activities.get(to_id, "Unknown")

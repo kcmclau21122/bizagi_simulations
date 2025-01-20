@@ -3,180 +3,178 @@ import pandas as pd
 from collections import defaultdict
 import logging
 
-def read_output_sequences(file_path):
-    transitions = []
-    with open(file_path, 'r') as file:
-        for line in file:
-            parts = line.strip().split('->')
-            from_task = parts[0].strip()
-            to_task, type_info = parts[1].rsplit('[Type: ', 1)
-            to_task = to_task.strip()
-            type_info = type_info.rstrip(']').strip()
-            transitions.append({'from': from_task, 'to': to_task, 'type': type_info})  # Use lowercase keys
-
-    transitions_df = pd.DataFrame(transitions)
-
-    # Identify "Start" and "Stop" activities
-    all_from_tasks = set(transitions_df['from'])
-    all_to_tasks = set(transitions_df['to'])
-
-    # Start activities: appear in 'from' but not in 'to'
-    start_activities = all_from_tasks - all_to_tasks
-
-    # Stop activities: appear in 'to' but not in 'from'
-    stop_activities = all_to_tasks - all_from_tasks
-    transitions_df.loc[transitions_df['to'].isin(stop_activities), 'type'] = 'Stop'
-
-    return transitions_df
-
-
-def remove_duplicate_activities(path):
-    """
-    Removes duplicate first activities in the next step if they match the last activity in the previous step.
-    Once the unique path is created, ensures the first activity in the path has [Type: Start].
-    """
-    if not path:
-        return path
-
-    unique_path = []
-    previous_to_activity = None
-
-    # Create unique path by removing self-links
-    for step in path:
-        parts = step.split("->")
-        if len(parts) != 2:
-            unique_path.append(step)  # Add malformed steps as is
-            continue
-        
-        from_activity = parts[0].split(" [Type:")[0].strip()  # Extract "from" activity name
-        to_activity = parts[1].split(" [Type:")[0].strip()    # Extract "to" activity name
-
-        # Skip the step if "from_activity" matches "previous_to_activity"
-        if from_activity == previous_to_activity:
-            continue
-
-        unique_path.append(step)
-        previous_to_activity = to_activity  # Update for the next iteration
-
-    # Set the first activity's type to [Type: Start]
-    if unique_path:
-        first_step = unique_path[0]
-        parts = first_step.split("->")
-        if len(parts) == 2:
-            from_activity = parts[0].split(" [Type:")[0].strip()  # Extract "from" activity name
-            parts[0] = f"{from_activity} [Type: Start]"  # Set or replace the type of the first activity
-            unique_path[0] = " ->".join(parts)
-
-    return unique_path
-
-
-def build_paths_old(df):
-    paths = []
-
-    def traverse(current_task, current_path):
-        next_steps = df[df['from'] == current_task]  # Use lowercase key
-        if next_steps.empty:
-            paths.append(current_path[:])
-            logging.info("Path completed: %s", " -> ".join(current_path))
-            return
-        for _, row in next_steps.iterrows():
-            next_step = f"{row['from']} [Type: {row['type']}] -> {row['to']} [Type: {row['type']}]"
-            # Skip adding the step if it repeats the last activity
-            if current_path and current_path[-1] == next_step:
-                continue
-            current_path.append(next_step)
-            traverse(row['to'], current_path)  # Use lowercase key
-            current_path.pop()
-
-    start_tasks = set(df['from']) - set(df['to'])  # Use lowercase keys
-    for start_task in start_tasks:
-        traverse(start_task, [])
-
-    logging.info("All paths generated:")
-    for idx, path in enumerate(paths, start=1):
-        logging.info("Path %d: %s", idx, " -> ".join(path))
-
-    # Remove duplicate activities before returning the path
-    cleaned_paths = [remove_duplicate_activities(path) for path in paths]
-
-    return cleaned_paths
-
 # Define the function to build paths
-from collections import defaultdict
-
-def build_paths(file_path):
+def build_sequence_df(file_path):
     # Read the file
     with open(file_path, 'r') as file:
         lines = [line.strip() for line in file.readlines()]
 
-    # Parse the "from" and "to" activities from the lines
-    connections = []
-    for line in lines:
-        from_activity = line.split(' -> ')[0]
-        to_part = line.split(' -> ')[1]
-        to_activity = to_part[:to_part.index(' [')]
-        connections.append((from_activity, to_activity))
+    # Initialize data for the DataFrame
+    data = {
+        "FromActivity": [],
+        "FromActivityType": [],
+        "FromGatewayType": [],
+        "ToActivity": [],
+        "ToActivityType": [],
+        "ToGatewayType": []
+    }
 
-    # Build a mapping from "from" activities to "to" activities
+    for line in lines:
+        # Extract "FromActivity" (substring before '[' or '->')
+        from_activity = line.split(' -> ')[0].split(' [')[0].strip()
+        data["FromActivity"].append(from_activity)
+
+        # Extract "FromActivityType" (substring '[Type:...]')
+        from_activity_type = None
+        if "[Type:" in line:
+            start = line.find("[Type:", 0, line.find(" -> "))
+            if start != -1:
+                end = line.find("]", start) + 1
+                from_activity_type = line[start:end]
+        data["FromActivityType"].append(from_activity_type)
+
+        # Extract "FromGatewayType"
+        from_gateway_type = None
+        if "[Inclusive Gateway]" in line or "[Exclusive Gateway]" in line or "[Parallel Gateway]" in line:
+            from_gateway_type = (
+                "[Inclusive Gateway]" if "[Inclusive Gateway]" in line else
+                "[Exclusive Gateway]" if "[Exclusive Gateway]" in line else
+                "[Parallel Gateway]"
+            )
+        data["FromGatewayType"].append(from_gateway_type)
+
+        # Extract "ToActivity" (substring after '->' and before '[')
+        to_activity = line.split(' -> ')[1].split(' [')[0].strip()
+        data["ToActivity"].append(to_activity)
+
+        # Extract "ToActivityType" (substring '[Type:...]' after '->')
+        to_activity_type = None
+        if "[Type:" in line:
+            start = line.find("[Type:", line.find(" -> "))
+            if start != -1:
+                end = line.find("]", start) + 1
+                to_activity_type = line[start:end]
+        data["ToActivityType"].append(to_activity_type)
+
+        # Extract "ToGatewayType"
+        to_gateway_type = None
+        if ("[Inclusive Gateway]" in line.split(' -> ')[1] or 
+            "[Exclusive Gateway]" in line.split(' -> ')[1] or 
+            "[Parallel Gateway]" in line.split(' -> ')[1] or 
+            "[Type: CONDITION" in line.split(' -> ')[1]):
+            to_gateway_type = (
+                "[Inclusive Gateway]" if "[Inclusive Gateway]" in line.split(' -> ')[1] else
+                "[Exclusive Gateway]" if ("[Exclusive Gateway]" in line.split(' -> ')[1] or "[Type: CONDITION" in line.split(' -> ')[1]) else
+                "[Parallel Gateway]"
+            )
+        data["ToGatewayType"].append(to_gateway_type)
+
+    # Create and return the DataFrame
+    df = pd.DataFrame(data)
+    return df
+
+# Not correct, dropping attribute values and the branches do not look correct.
+def build_paths(sequence_df):
+    # Parse the "FromActivity" and "ToActivity" into connections
+    connections = list(zip(sequence_df["FromActivity"], sequence_df["ToActivity"]))
+
+    # Build a mapping from "FromActivity" to "ToActivity"
     adjacency_list = defaultdict(list)
     for from_activity, to_activity in connections:
         adjacency_list[from_activity].append(to_activity)
 
     # Find the start activity
-    start_activity = next((activity for activity in adjacency_list.keys() if "[Type: Start]" in activity), None)
+    start_activity = next((activity for activity in adjacency_list.keys() if "[Type: Start]" in sequence_df.loc[sequence_df["FromActivity"] == activity, "FromActivityType"].values), None)
     if not start_activity:
-        raise ValueError("No start activity found in the input file.")
+        raise ValueError("No start activity found in the input DataFrame.")
 
     # Recursive function to build paths
-    def dfs(current_path, all_paths):
+    def dfs(current_path, sub_path_index, parent_path):
         last_activity = current_path[-1]
 
-        # If the current activity is a stop activity, save the path
-        if "[Type: Stop]" in last_activity:
-            all_paths.append(current_path)
+        # Record the current path step
+        parent_path.append((sub_path_index, last_activity))
+
+        # If the current activity is a stop activity, return
+        if "[Type: Stop]" in sequence_df.loc[sequence_df["FromActivity"] == last_activity, "FromActivityType"].values:
             return
 
         # Explore next activities
         if last_activity in adjacency_list:  # Check for valid transitions
             for next_activity in adjacency_list[last_activity]:
-                if next_activity not in current_path:  # Prevent loops
-                    dfs(current_path + [next_activity], all_paths)
-        else:
-            # Dead-end case: save the path
-            all_paths.append(current_path)
+                row = sequence_df[(sequence_df["FromActivity"] == last_activity) & (sequence_df["ToActivity"] == next_activity)].iloc[0]
+                gateway_type = row["FromGatewayType"]
 
-    # Initialize the DFS
-    all_paths = []
-    dfs([start_activity], all_paths)
+                if gateway_type in ["[Parallel Gateway]", "[Inclusive Gateway]", "[Exclusive Gateway]"]:
+                    # Create a new sub-path for each branch
+                    new_sub_path_index = f"{sub_path_index}.{len(parent_path)}"
+                    dfs([next_activity], new_sub_path_index, parent_path)
+                else:
+                    dfs(current_path + [next_activity], sub_path_index, parent_path)
 
-    # Debugging output for verification
-    print(f"Start Activity: {start_activity}")
-    print(f"Adjacency List: {dict(adjacency_list)}")
-    print(f"All Paths: {all_paths}")
+    # Initialize the path traversal
+    parent_path = []
+    dfs([start_activity], "0", parent_path)
 
     # Convert the results to a DataFrame
-    if all_paths:  # Ensure there are paths to process
-        path_data = {"Path Index": [], "Activity": [], "Type": []}
-        for index, path in enumerate(all_paths):
-            for activity in path:
-                path_data["Path Index"].append(index)
-                path_data["Activity"].append(activity)
-                # Extract the type from the activity string
-                activity_type = activity[activity.index("["):activity.index("]") + 1] if "[" in activity and "]" in activity else "[Unknown]"
-                path_data["Type"].append(activity_type)
-        df = pd.DataFrame(path_data)
-    else:
-        df = pd.DataFrame(columns=["Path Index", "Activity", "Type"])  # Empty DataFrame in case of no paths
+    path_data = {
+        "Path Index": [],
+        "SubPath Index": [],
+        "Step Number": [],
+        "Activity": [],
+        "ActivityType": [],
+        "GatewayType": [],
+        "Performers": [],
+        "Performers Rule": [],
+        "Number of Performers": [],
+        "Probability": []
+    }
+
+    for step_number, (sub_path_index, activity) in enumerate(parent_path, start=1):
+        # Check if the activity exists in sequence_df
+        if activity not in sequence_df["FromActivity"].values:
+            # Handle unknown activities
+            path_data["Path Index"].append(0)  # Single path
+            path_data["SubPath Index"].append(sub_path_index)
+            path_data["Step Number"].append(step_number)
+            path_data["Activity"].append(activity)
+            path_data["ActivityType"].append("[Unknown]")
+            path_data["GatewayType"].append(None)
+            path_data["Performers"].append(None)
+            path_data["Performers Rule"].append(None)
+            path_data["Number of Performers"].append(None)
+            path_data["Probability"].append(None)
+            continue
+
+        row = sequence_df[sequence_df["FromActivity"] == activity].iloc[0]
+
+        path_data["Path Index"].append(0)  # Single path
+        path_data["SubPath Index"].append(sub_path_index)
+        path_data["Step Number"].append(step_number)
+        path_data["Activity"].append(activity)
+        path_data["ActivityType"].append(row["FromActivityType"])
+        path_data["GatewayType"].append(row["FromGatewayType"])
+        path_data["Performers"].append(None)
+        path_data["Performers Rule"].append(None)
+        path_data["Number of Performers"].append(None)
+        path_data["Probability"].append(None)
+
+    # Create and order DataFrame
+    df = pd.DataFrame(path_data)
+    df = df.sort_values(by=["Path Index", "SubPath Index", "Step Number"]).reset_index(drop=True)
 
     return df
+
 
 # Extract start tasks from paths DataFrame
 def extract_start_tasks(paths):
     start_tasks = set()
     grouped = paths.groupby("Path Index")  # Group by path index
     for _, group in grouped:
-        first_activity = group.iloc[0]["Activity"]  # Get the first activity in each path
-        if "[type: start]" in first_activity.lower():
-            activity_name = first_activity.split("[type:")[0].strip()  # Extract activity name
+        first_activity = group.iloc[0]["FromActivity"]  # Get the first FromActivity in each path
+        first_activity_type = group.iloc[0]["FromActivityType"]  # Get the type of the first activity
+        if "[Type: Start]" in first_activity_type:
+            activity_name = first_activity.split("[Type:")[0].strip()  # Extract activity name
             start_tasks.add(activity_name)
     return start_tasks
+
