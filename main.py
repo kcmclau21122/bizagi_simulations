@@ -3,12 +3,13 @@
 
 from simulation.simulation import discrete_event_simulation
 from simulation.utils import get_simulation_parameters
-from simulation.data_handler import build_paths, extract_start_tasks, build_sequence_df
+from simulation.data_handler import build_paths, diagram_process, extract_start_tasks_from_json
 from simulation.reporting import save_simulation_report
 from simulation.xpdl_parser import parse_xpdl_to_sequences
 import pandas as pd
 from datetime import datetime
 import random
+import json
 
 def main():
     simulation_metrics_path = './Bizagi/simulation_metrics.xlsx'
@@ -35,20 +36,17 @@ def main():
     transitions_df = []
 
     # Transform the output_sequneces.txt file to a dataframe 
-    df_path_sequences = build_sequence_df(output_sequences_path)
+    #df_path_sequences = build_sequence_df(output_sequences_path)
 
     # Build the process paths and sub-paths
-    paths = build_paths(df_path_sequences)
+    paths = build_paths(output_sequences_path)
 
-    # Write paths DataFrame to simulation_log.txt
-    with open("simulation_log.txt", "w") as log_file:
-        log_file.write("df_path_sequences:\n")
-        log_file.write(df_path_sequences.to_string(index=False))
-        log_file.write("\n\npaths:\n")
-        log_file.write(paths.to_string(index=False))
+    # Diagram the process to a png file
+    diagram_process(paths)
 
     # Extract start tasks from paths
-    start_tasks = extract_start_tasks(paths)
+    #json_file_path = "process_model.json"  # Path to the attached JSON file
+    start_tasks = extract_start_tasks_from_json(paths)
     
     # Get simulation parameters
     max_arrival_count, arrival_interval_minutes = get_simulation_parameters(simulation_metrics)

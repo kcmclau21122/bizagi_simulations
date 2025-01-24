@@ -1,5 +1,6 @@
 # Logic the runs the simulation
-from datetime import timedelta
+from datetime import datetime, timedelta
+import json
 import heapq
 from simulation.utils import is_work_time, advance_to_work_time, get_task_duration, get_condition_probability, advance_time_in_seconds
 from simulation.reporting import print_processing_times_and_utilization, save_simulation_report
@@ -29,33 +30,45 @@ def release_resource(resource_name, active_resources):
         active_resources[resource_name] -= 1
 
 # Function to schedule all tokens
-def schedule_tokens(max_arrival_count, arrival_interval_minutes, start_time, start_tasks, paths, event_queue, active_tokens, transitions_df, simulation_end_date):
-    token_count = 0
-    arrival_time = start_time  # Initialize the arrival time for the first token
+def schedule_tokens(json_file_path, max_arrival_count, arrival_interval_minutes):
+    """
+    Schedules tokens to start the process based on the "Start" node and provided parameters.
 
-    while token_count < max_arrival_count:
-        for start_task in start_tasks:
-            next_tasks = transitions_df[transitions_df['from'] == start_task]['to'].tolist()
-            for next_task in next_tasks:
-                if arrival_time >= simulation_end_date:
-                    break
+    Parameters:
+        json_file_path (str): Path to the JSON file.
+        max_arrival_count (int): The maximum number of tokens to schedule.
+        arrival_interval_minutes (int): The interval in minutes between token arrivals.
 
-                # Schedule the token
-                heapq.heappush(event_queue, Event(arrival_time, token_count, next_task, 'start'))
-                active_tokens[token_count] = {
-                    'current_task': None,
-                    'completed_tasks': set(),  # Keep track of completed tasks
-                    'start_time': arrival_time,  # Overall start time
-                    'end_time': None,           # Overall end time
-                    'total_wait_time': 0,       # Accumulated wait time
-                    'paths': paths[:],
-                    'wait_start_time': None
-                }
-                logging.info(f"Token {token_count} scheduled to start at {arrival_time} for task '{next_task}'")
+    Returns:
+        list: A list of dictionaries containing token ID and start time.
+    """
+    # Load the JSON file
+    with open(json_file_path, "r") as file:
+        process_model_data = json.load(file)
 
-                # Update the arrival time for the next token
-                arrival_time += timedelta(minutes=arrival_interval_minutes)
-                token_count += 1
+    # Extract the "Start" node
+    nodes = process_model_data.get("nodes", [])
+    start_node = None
+    for node in nodes:
+        if node.get("type") == "Start":
+            start_node = node["id"]
+            break
+
+    if not start_node:
+        raise ValueError("No 'Start' node found in the JSON file.")
+
+    # Schedule tokens
+    schedule = []
+    current_time = datetime.now()
+    for token_id in range(1, max_arrival_count + 1):
+        schedule.append({
+            "token_id": f"Token-{token_id}",
+            "start_time": current_time.strftime("%Y-%m-%d %H:%M:%S"),
+            "start_node": start_node
+        })
+        current_time += timedelta(minutes=arrival_interval_minutes)
+
+    return schedule
 
 # Function to start token processing
 def start_token_processing(token_id, task_name, current_time, simulation_metrics, active_resources, available_resources, 

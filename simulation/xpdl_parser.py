@@ -92,10 +92,14 @@ def parse_xpdl_to_sequences(xpdl_file_path, output_file_path):
 
             # Include annotations or conditions for the To activity
             if to_activity == "Unknown" and "CONDITION" in condition:
-                to_activity_with_type = f"Unknown [Type: {condition}]"
+                to_activity_with_type = f"Stop [Exclusive Gateway] [Type: {condition}]"
             else:
                 to_activity_with_type = activities.get(to_id, f"Unknown({to_id})")
-                to_activity_with_type += f" [Type: {condition}]"
+                if "CONDITION" in condition:
+                    to_activity_with_type += f"[Exclusive Gateway] [Type: {condition}]"
+                else:
+                    to_activity_with_type += f" [Type: {condition}]"
+
 
             # Append the row to the sequence
             sequence_rows.append({
