@@ -15,7 +15,7 @@
         },
         {
             "type": "Activity Step",
-            "gateway": null,
+            "gateway": "[Exclusive Gateway]",
             "id": "Complete /Accurate?"
         },
         {
@@ -29,102 +29,81 @@
             "id": "Work with REO RPO to Correct (5.5.13.3)"
         },
         {
-            "type": "Activity Step",
-            "gateway": null,
+            "type": "[Inclusive Gateway]",
+            "gateway": "[Inclusive Gateway]",
             "id": "Create Journal Entries?"
         },
         {
-            "type": "CONDITION-Yes",
+            "type": "CONDITION-Post",
             "gateway": "[Exclusive Gateway]",
             "id": "Create/Post Journal Entries (5.5.13.4)"
         },
         {
-            "type": "CONDITION-No",
+            "type": "CONDITION-Path 3",
             "gateway": "[Exclusive Gateway]",
-            "id": "Stop"
-        },
-        {
-            "type": "Activity Step",
-            "gateway": null,
-            "id": "Link"
-        },
-        {
-            "type": "Activity Step",
-            "gateway": "[Parallel Gateway]",
-            "id": "P-Gate"
-        },
-        {
-            "type": "Activity Step",
-            "gateway": null,
-            "id": "Path One"
-        },
-        {
-            "type": "Activity Step",
-            "gateway": null,
-            "id": "Path Two"
+            "id": "Inclusive Path 3"
         },
         {
             "type": "Stop",
             "gateway": null,
-            "id": "Stop"
+            "id": "Unknown"
         }
     ],
     "links": [
         {
+            "type": "Activity Step",
             "source": "Monthly",
             "target": "Review AM using Asset Change Tracker (5.5.13.1)"
         },
         {
+            "type": "Activity Step",
             "source": "Review AM using Asset Change Tracker (5.5.13.1)",
             "target": "Complete /Accurate?"
         },
         {
+            "type": "CONDITION-Yes",
             "source": "Complete /Accurate?",
             "target": "Note Accuracy in Asset Change Tracker (5.5.13.2)"
         },
         {
+            "type": "CONDITION-No",
             "source": "Complete /Accurate?",
             "target": "Work with REO RPO to Correct (5.5.13.3)"
         },
         {
+            "type": "Stop",
             "source": "Note Accuracy in Asset Change Tracker (5.5.13.2)",
-            "target": "Link"
+            "target": "Unknown"
         },
         {
+            "type": "[Inclusive Gateway]",
             "source": "Work with REO RPO to Correct (5.5.13.3)",
-            "target": "Note Accuracy in Asset Change Tracker (5.5.13.2)"
+            "target": "Create Journal Entries?"
         },
         {
+            "type": "CONDITION-Post",
             "source": "Create Journal Entries?",
             "target": "Create/Post Journal Entries (5.5.13.4)"
         },
         {
+            "type": "CONDITION-Note Accuracy",
             "source": "Create Journal Entries?",
-            "target": "Stop"
+            "target": "Note Accuracy in Asset Change Tracker (5.5.13.2)"
         },
         {
+            "type": "CONDITION-Path 3",
+            "source": "Create Journal Entries?",
+            "target": "Inclusive Path 3"
+        },
+        {
+            "type": "Stop",
             "source": "Create/Post Journal Entries (5.5.13.4)",
-            "target": "P-Gate"
+            "target": "Unknown"
         },
         {
-            "source": "Link",
-            "target": "Create Journal Entries?"
-        },
-        {
-            "source": "P-Gate",
-            "target": "Path One"
-        },
-        {
-            "source": "P-Gate",
-            "target": "Path Two"
-        },
-        {
-            "source": "Path One",
-            "target": "Stop"
-        },
-        {
-            "source": "Path Two",
-            "target": "Stop"
+            "type": "Stop",
+            "source": "Inclusive Path 3",
+            "target": "Unknown"
         }
     ]
 }

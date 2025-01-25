@@ -1,12 +1,16 @@
 # simulation/data_handler.py
 import pandas as pd
-from collections import defaultdict
-import logging
+#from collections import defaultdict
+#import logging
 import json
 import re
 from networkx.readwrite import json_graph
 import networkx as nx
 import matplotlib.pyplot as plt
+import xml.etree.ElementTree as ET
+from networkx.readwrite import json_graph
+import networkx as nx
+
 
 def build_paths(file_path):
     with open(file_path, "r") as file:
@@ -41,11 +45,19 @@ def build_paths(file_path):
         target_type = target_type_match.group(1) if target_type_match else "Activity Step"
         target_gateway = next((gw for gw in gateway_types if gw in target), None)
 
+        # If a getway is inclusive or parallel then set the type as the same as the gateway
+        if target_gateway in ["[Inclusive Gateway]","[Parallel Gateway]"]:
+            target_type = target_gateway
+
+
+        if source_gateway in ["[Inclusive Gateway]","[Parallel Gateway]"]:
+            source_type = source_gateway
+
         # Add source node with attributes
         if source_name not in process_model:
             process_model.add_node(
                 source_name,
-                type=source_type or "Activity Step",  # Default type if not specified
+                type=source_type or "Activity Step",
                 gateway=source_gateway
             )
 
@@ -53,24 +65,21 @@ def build_paths(file_path):
         if target_name not in process_model:
             process_model.add_node(
                 target_name,
-                type=target_type,  # Default type if not specified
+                type=target_type,
                 gateway=target_gateway
             )
 
-        # Add edge between source and target
-        process_model.add_edge(source_name, target_name)
+        # Determine edge type
+        if source_gateway in ["[Inclusive Gateway]", "[Parallel Gateway]"]:
+            edge_type = source_gateway  # Use source gateway type for these cases
+        else:
+            edge_type = target_type  # Default to target type otherwise
+
+        # Add edge to the graph
+        process_model.add_edge(source_name, target_name, type=edge_type)
 
     # Convert the graph to JSON
     process_model_data = json_graph.node_link_data(process_model)
-
-    # Post-process to update "Unknown" Stop node and its links
-    for node in process_model_data["nodes"]:
-        if node["type"] == "Stop" and node["id"] == "Unknown":
-            old_id = node["id"]
-            node["id"] = "Stop"
-            for link in process_model_data["links"]:
-                if link["target"] == old_id:
-                    link["target"] = "Stop"
 
     # Save the updated JSON file
     json_output_path = "process_model.json"
@@ -79,31 +88,82 @@ def build_paths(file_path):
 
     return json_output_path
 
+
 def diagram_process(json_output_path):
-    # Load the JSON file again
+    # Load the JSON file
     with open(json_output_path, "r") as json_file:
         json_data = json.load(json_file)
 
-    # Recreate the graph from the JSON data
-    process_model = json_graph.node_link_graph(json_data)
+    # Recreate the graph from the JSON data with explicit edges="links"
+    process_model = json_graph.node_link_graph(json_data, edges="links")
 
-    # Draw the graph
-    plt.figure(figsize=(16, 12))
-    pos = nx.spring_layout(process_model)  # Use spring layout for better visualization
-    nx.draw(
+    # Initialize node shapes
+    node_shapes = {}
+    for node in process_model.nodes:
+        node_data = process_model.nodes[node]
+        # Default shape is rectangle
+        node_shape = "s"  # Matplotlib marker for square/rectangle
+
+        # Check for gateway type of the node itself
+        node_gateway = node_data.get("gateway")
+        if node_gateway in ["[Parallel Gateway]", "[Inclusive Gateway]"]:
+            node_shape = "D"  # Diamond shape for gateways
+
+        # Check if this node is the source of a link with type "CONDITION-"
+        for _, target, edge_data in process_model.out_edges(node, data=True):
+            edge_type = edge_data.get("type", "")
+            if "CONDITION-" in edge_type:
+                node_shape = "D"  # Diamond shape for sources of "CONDITION-" edges
+                break
+
+        # Store the shape for the node
+        node_shapes[node] = node_shape
+
+    # Draw the graph with custom shapes
+    plt.figure(figsize=(24, 24))  # Larger figure size for better spacing
+    pos = nx.spring_layout(process_model, k=8.0, scale=3.0, iterations=500)  # Adjust spacing
+
+    # Group nodes by shape
+    grouped_nodes = {
+        shape: [n for n in process_model if node_shapes.get(n) == shape]
+        for shape in set(node_shapes.values())
+    }
+    for shape, nodes in grouped_nodes.items():
+        if nodes:  # Ensure there are nodes for the shape
+            nx.draw_networkx_nodes(
+                process_model,
+                pos,
+                nodelist=nodes,
+                node_size=1000,
+                node_shape=shape,
+                node_color="lightblue"
+            )
+
+    # Draw edges with arrowheads
+    nx.draw_networkx_edges(
         process_model,
         pos,
-        with_labels=True,
-        node_size=1000,
-        node_color="lightblue",
-        font_size=8,
-        font_weight="bold",
-        edge_color="gray"
+        edge_color="gray",
+        arrows=True,
+        connectionstyle="arc3,rad=0.1",  # Adds curvature for better visualization
+        arrowstyle="-|>",  # Defines arrowhead style
+        min_target_margin=15  # Space between node and arrowhead
     )
+
+    # Add edge labels with CONDITION text
+    edge_labels = {}
+    for u, v, data in process_model.edges(data=True):
+        edge_type = data.get('type', '')
+        if "CONDITION-" in edge_type:
+            # Extract the text after "CONDITION-"
+            label = edge_type.split("CONDITION-")[1]
+            edge_labels[(u, v)] = label
+
+    nx.draw_networkx_labels(process_model, pos, font_size=8, font_weight="bold")
     nx.draw_networkx_edge_labels(
         process_model,
         pos,
-        edge_labels={(u, v): d.get('type', '') for u, v, d in process_model.edges(data=True)},
+        edge_labels=edge_labels,  # Use the custom edge labels
         font_size=6
     )
 
@@ -112,6 +172,7 @@ def diagram_process(json_output_path):
     plt.title("Process Model Diagram", fontsize=8)
     plt.savefig(diagram_output_path)
     plt.close()
+
     return
 
 # Extract start tasks from paths DataFrame

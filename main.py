@@ -16,7 +16,8 @@ def main():
     #xpdl_file_path = './Bizagi/5.5_1/5.5.13 Real Property-Monthly Reviews-1.xpdl'
     #xpdl_file_path = './Bizagi/5.5_1/5.5.13 Real Property-Monthly Reviews-2.xpdl'
     #xpdl_file_path = './Bizagi/5.5_1/5.5.13 Real Property-Monthly Reviews-Link.xpdl'
-    xpdl_file_path = './Bizagi/5.5_1/5.5.13 Real Property-Monthly Reviews-Parallel.xpdl'
+    #xpdl_file_path = './Bizagi/5.5_1/5.5.13 Real Property-Monthly Reviews-Parallel.xpdl'
+    xpdl_file_path = './Bizagi/5.5_1/5.5.13 Real Property-Monthly Reviews-Inclusive.xpdl'
     output_sequences_path = 'output_sequences.txt'
 
     simulation_days = 2
@@ -54,7 +55,7 @@ def main():
     # Run the simulation
     discrete_event_simulation(
         max_arrival_count, arrival_interval_minutes, simulation_days, paths,
-        simulation_metrics, start_time, xpdl_file_path, transitions_df, start_tasks
+        simulation_metrics, start_time, start_tasks
     )
 
 if __name__ == "__main__":

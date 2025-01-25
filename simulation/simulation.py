@@ -30,7 +30,8 @@ def release_resource(resource_name, active_resources):
         active_resources[resource_name] -= 1
 
 # Function to schedule all tokens
-def schedule_tokens(json_file_path, max_arrival_count, arrival_interval_minutes):
+#### Need to include stopping scheduling based on simulation_end_date ######
+def schedule_tokens(json_file_path, max_arrival_count, arrival_interval_minutes, simulation_end_date):
     """
     Schedules tokens to start the process based on the "Start" node and provided parameters.
 
@@ -221,7 +222,7 @@ def process_tokens(event_queue, active_tokens, active_resources, available_resou
 
 # Main simulation function
 def discrete_event_simulation(max_arrival_count, arrival_interval_minutes, simulation_days, paths, simulation_metrics, 
-                              start_time, xpdl_file_path, transitions_df, start_tasks):
+                              start_time, start_tasks):
     simulation_end_date = start_time + timedelta(days=simulation_days)
 
     # Normalize column names to lowercase for consistency
@@ -238,25 +239,23 @@ def discrete_event_simulation(max_arrival_count, arrival_interval_minutes, simul
     resource_wait_queue = {resource: [] for resource in resource_busy_periods.keys()}
 
     # Schedule tokens
-    schedule_tokens(max_arrival_count, arrival_interval_minutes, start_time, start_tasks, paths, 
-                    event_queue, active_tokens, transitions_df, simulation_end_date)
+    schedule_tokens(paths, max_arrival_count, arrival_interval_minutes, simulation_end_date)
 
     # Wait until all tokens are scheduled before processing
     while len(event_queue) < max_arrival_count:
         pass
 
     # Process tokens
-    process_tokens(event_queue, active_tokens, active_resources, available_resources, resource_busy_periods, 
-                   activity_processing_times, transitions_df, simulation_metrics, resource_wait_queue, completed_tokens, paths)
+    #process_tokens(event_queue, active_tokens, active_resources, available_resources, resource_busy_periods, 
+    #               activity_processing_times, transitions_df, simulation_metrics, resource_wait_queue, completed_tokens, paths)
 
-    resource_utilization = print_processing_times_and_utilization(
-        activity_processing_times,
-        resource_busy_periods,
-        simulation_end_date,
-        start_time,
-        available_resources,
-        transitions_df
-    )
+    #resource_utilization = print_processing_times_and_utilization(
+    #    activity_processing_times,
+    #    resource_busy_periods,
+    #    simulation_end_date,
+    #    start_time,
+    #    available_resources
+    #)
 
     save_simulation_report(activity_processing_times, resource_utilization, len(active_tokens), xpdl_file_path, transitions_df, completed_tokens)
 
