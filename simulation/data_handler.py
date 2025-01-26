@@ -1,13 +1,10 @@
 # simulation/data_handler.py
 import pandas as pd
-#from collections import defaultdict
-#import logging
 import json
 import re
 from networkx.readwrite import json_graph
 import networkx as nx
 import matplotlib.pyplot as plt
-import xml.etree.ElementTree as ET
 from networkx.readwrite import json_graph
 import networkx as nx
 

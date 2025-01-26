@@ -53,7 +53,7 @@ def main():
     diagram_process(json_file_path)
 
     # Run the simulation
-    run_simulation(json_file_path, simulation_metrics, simulation_days, start_time)
+    run_simulation(json_file_path, simulation_days, start_time)
 
 if __name__ == "__main__":
     main()
