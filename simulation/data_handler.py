@@ -12,12 +12,15 @@ from networkx.readwrite import json_graph
 import networkx as nx
 
 
-def build_paths(file_path):
+def build_paths(file_path, simulation_metrics):
     with open(file_path, "r") as file:
         lines = file.readlines()
 
     # Initialize directed graph
     process_model = nx.DiGraph()
+
+    # Normalize column names in simulation_metrics for consistency
+    simulation_metrics.columns = map(str.lower, simulation_metrics.columns)
 
     # Define gateway types
     gateway_types = ["[Exclusive Gateway]", "[Inclusive Gateway]", "[Parallel Gateway]"]
@@ -45,28 +48,37 @@ def build_paths(file_path):
         target_type = target_type_match.group(1) if target_type_match else "Activity Step"
         target_gateway = next((gw for gw in gateway_types if gw in target), None)
 
-        # If a getway is inclusive or parallel then set the type as the same as the gateway
-        if target_gateway in ["[Inclusive Gateway]","[Parallel Gateway]"]:
+        # If a gateway is inclusive or parallel, then set the type as the same as the gateway
+        if target_gateway in ["[Inclusive Gateway]", "[Parallel Gateway]"]:
             target_type = target_gateway
 
-
-        if source_gateway in ["[Inclusive Gateway]","[Parallel Gateway]"]:
+        if source_gateway in ["[Inclusive Gateway]", "[Parallel Gateway]"]:
             source_type = source_gateway
 
         # Add source node with attributes
         if source_name not in process_model:
+            source_attributes = simulation_metrics[simulation_metrics['name'].str.lower() == source_name.lower()]
+            source_attributes_dict = source_attributes.iloc[0].dropna().to_dict() if not source_attributes.empty else {}
+            source_attributes_dict.pop('type', None)  # Remove 'type' key if it exists
+            source_attributes_dict.pop('name', None)  # Remove 'name' key if it exists
             process_model.add_node(
                 source_name,
                 type=source_type or "Activity Step",
-                gateway=source_gateway
+                gateway=source_gateway,
+                **source_attributes_dict
             )
 
         # Add target node with attributes
         if target_name not in process_model:
+            target_attributes = simulation_metrics[simulation_metrics['name'].str.lower() == target_name.lower()]
+            target_attributes_dict = target_attributes.iloc[0].dropna().to_dict() if not target_attributes.empty else {}
+            target_attributes_dict.pop('type', None)  # Remove 'type' key if it exists
+            target_attributes_dict.pop('name', None)  # Remove 'name' key if it exists
             process_model.add_node(
                 target_name,
                 type=target_type,
-                gateway=target_gateway
+                gateway=target_gateway,
+                **target_attributes_dict
             )
 
         # Determine edge type
@@ -87,7 +99,6 @@ def build_paths(file_path):
         json.dump(process_model_data, json_file, indent=4)
 
     return json_output_path
-
 
 def diagram_process(json_output_path):
     # Load the JSON file

@@ -1,4 +1,3 @@
-# Bug: Wait times are not calculated. Not properly tracking wait time. Not accurately reporting on number of tokens completed.
 # Main code file for the Bizagi Simulator emulator
 
 from simulation.simulation import run_simulation
@@ -10,6 +9,16 @@ import pandas as pd
 from datetime import datetime
 import random
 import json
+import logging
+from tabulate import tabulate
+
+# Configure logging
+logging.basicConfig(
+    filename='simulation_log.txt',
+    filemode='w',  # Overwrite the log file
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 
 def main():
     simulation_metrics_path = './Bizagi/simulation_metrics-2.xlsx'
@@ -32,25 +41,16 @@ def main():
     # Normalize column names to lowercase
     simulation_metrics.columns = map(str.lower, simulation_metrics.columns)
 
-    #transitions_df = read_output_sequences(output_sequences_path)
-    #transitions_df.columns = map(str.lower, transitions_df.columns)
-    transitions_df = []
-
-    # Transform the output_sequneces.txt file to a dataframe 
-    #df_path_sequences = build_sequence_df(output_sequences_path)
+    # Log the entire simulation_metrics DataFrame as a formatted table
+    logging.info("Logging simulation metrics as a formatted table:")
+    table = tabulate(simulation_metrics, headers='keys', tablefmt='grid', showindex=False)
+    logging.info("\n" + table)
 
     # Build the process paths and sub-paths
-    json_file_path = build_paths(output_sequences_path)
+    json_file_path = build_paths(output_sequences_path, simulation_metrics)
 
     # Diagram the process to a png file
     diagram_process(json_file_path)
-
-    # Extract start tasks from paths
-    #json_file_path = "process_model.json"  # Path to the attached JSON file
-    #start_tasks = extract_start_tasks_from_json(paths)
-    
-    # Get simulation parameters
-    #max_arrival_count, arrival_interval_minutes = get_simulation_parameters(simulation_metrics)
 
     # Run the simulation
     run_simulation(json_file_path, simulation_metrics, simulation_days, start_time)

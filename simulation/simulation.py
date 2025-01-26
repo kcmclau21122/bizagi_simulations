@@ -11,15 +11,6 @@ import random
 import re
 import pandas as pd
 from collections import defaultdict
-
-# Configure logging
-logging.basicConfig(
-    filename='simulation_log.txt',
-    filemode='w',  # Overwrite the log file
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
-
 # Function to schedule all tokens
 def schedule_tokens(json_file_path, max_arrival_count, arrival_interval_minutes, start_time, simulation_end_date):
     """

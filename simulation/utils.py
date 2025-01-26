@@ -11,6 +11,10 @@ def get_simulation_parameters(simulation_metrics):
     # Convert column names to lowercase for consistent access
     simulation_metrics.columns = map(str.lower, simulation_metrics.columns)
 
+    # Log the entire simulation_metrics DataFrame to the log file
+    logging.info("Logging simulation metrics:")
+    logging.info(simulation_metrics.to_string(index=False))
+
     # Filter the DataFrame for rows where 'type' equals 'start' (case-insensitively)
     start_event = simulation_metrics[simulation_metrics['type'].str.lower() == 'start']
     
