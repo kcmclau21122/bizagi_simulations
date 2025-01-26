@@ -2,7 +2,7 @@
 from datetime import datetime, timedelta
 import json
 import heapq
-from simulation.utils import is_work_time, advance_to_work_time, get_task_duration, get_condition_probability, advance_time_in_seconds
+from simulation.utils import is_work_time, advance_to_work_time, get_task_duration, get_condition_probability, advance_time_in_seconds, choose_node
 from simulation.reporting import print_processing_times_and_utilization, save_simulation_report
 from simulation.data_handler import extract_start_tasks_from_json
 import logging
@@ -42,6 +42,113 @@ def schedule_tokens(json_file_path, max_arrival_count, arrival_interval_minutes,
 
     return schedule
 
+def release_resources(task_name, active_resources, resource_wait_queue, event_queue, activity_processing_times):
+    """
+    Release resources when a token completes an activity and handle the next token in queue.
+    """
+    with open('process_model.json', 'r') as f:
+        process_model = json.load(f)
+
+    nodes = {node["id"]: node for node in process_model["nodes"]}
+    task_node = nodes.get(task_name)
+
+    if not task_node:
+        raise ValueError(f"Task '{task_name}' not found in the process model.")
+
+    resource = task_node.get("resource")
+
+    if resource:
+        active_resources[resource] -= 1
+
+        if resource_wait_queue[resource]:
+            next_token_id, next_task_name, queued_time = resource_wait_queue[resource].pop(0)
+            wait_duration = (datetime.now() - queued_time).total_seconds() / 60
+
+            if next_task_name not in activity_processing_times:
+                activity_processing_times[next_task_name] = {"wait_times": [], "process_times": [], "tokens_started": 0}
+
+            activity_processing_times[next_task_name]["wait_times"].append(wait_duration)
+
+            heapq.heappush(event_queue, (datetime.now(), next_token_id, next_task_name, "start"))
+            logging.info(f"Token {next_token_id} started from wait queue for '{next_task_name}' after waiting {wait_duration:.2f} minutes.")
+
+# Helper function to process events
+# Helper function to process events
+def process_events(event_queue, active_tokens, active_resources, resource_wait_queue, activity_processing_times):
+    """
+    Process all events in the simulation.
+    """
+    with open('process_model.json', 'r') as f:
+        process_model = json.load(f)
+
+    nodes = {node["id"]: node for node in process_model["nodes"]}
+    links = process_model["links"]
+
+    tokens_completed = 0  # Track tokens completing the entire process
+
+    while event_queue:
+        event_time, token_id, task_name, event_type = heapq.heappop(event_queue)
+
+        if event_type == 'start':
+            start_token_processing(
+                token_id=token_id,
+                task_name=task_name,
+                start_time=event_time,
+                active_resources=active_resources,
+                resource_wait_queue=resource_wait_queue,
+                activity_processing_times=activity_processing_times,
+                event_queue=event_queue,
+                active_tokens=active_tokens
+            )
+
+        elif event_type == 'end':
+            logging.info(f"Token {token_id} completed task '{task_name}' at {event_time}.")
+            release_resources(
+                task_name=task_name,
+                active_resources=active_resources,
+                resource_wait_queue=resource_wait_queue,
+                event_queue=event_queue,
+                activity_processing_times=activity_processing_times
+            )
+
+            source_node = nodes.get(task_name)
+            if not source_node:
+                raise ValueError(f"Node '{task_name}' not found in the process model.")
+
+            # Determine next node(s) using choose_node
+            next_nodes = choose_node(source_node, links)
+            if not next_nodes:
+                # Token has completed the process
+                tokens_completed += 1
+                logging.info(f"Token {token_id} has completed the entire process.")
+                continue
+
+            for next_task_name in next_nodes:
+                task_node = nodes.get(next_task_name, {})
+
+                # Determine processing time for the next node
+                avg_time = task_node.get("avg time", 0)
+                min_time = task_node.get("min time", 0)
+                max_time = task_node.get("max time", 0)
+
+                if avg_time > 0 and min_time > 0 and max_time > 0:
+                    task_duration = random.triangular(min_time, avg_time, max_time)
+                    next_start_time = event_time + timedelta(minutes=task_duration)
+                else:
+                    # No processing time, move immediately
+                    task_duration = 0
+                    next_start_time = event_time
+
+                # Log token movement
+                logging.info(
+                    f"Token {token_id} scheduled to start task '{next_task_name}' "
+                    f"after {task_duration:.2f} minutes at {next_start_time}."
+                )
+
+                # Add next task to the event queue
+                heapq.heappush(event_queue, (next_start_time, token_id, next_task_name, "start"))
+
+
 # Function to start token processing
 def start_token_processing(token_id, task_name, start_time, active_resources, resource_wait_queue, activity_processing_times, event_queue, active_tokens):
     """
@@ -79,76 +186,19 @@ def start_token_processing(token_id, task_name, start_time, active_resources, re
 
     # Determine task duration
     task_duration = random.triangular(
-        task_node.get("min time", 5),
-        task_node.get("avg time", 10),
-        task_node.get("max time", 15)
+        task_node.get("min time", 0),
+        task_node.get("avg time", 0),
+        task_node.get("max time", 0)
     )
     end_time = start_time + timedelta(minutes=task_duration)
+
+    # Track processing time
+    activity_processing_times[task_name]["process_times"].append(task_duration)
 
     heapq.heappush(event_queue, (end_time, token_id, task_name, "end"))
     logging.info(f"Token {token_id} scheduled to end task '{task_name}' at {end_time}.")
 
     return True
-
-def release_resources(task_name, active_resources, resource_wait_queue, event_queue, activity_processing_times):
-    """
-    Release resources when a token completes an activity and handle the next token in queue.
-    """
-    with open('process_model.json', 'r') as f:
-        process_model = json.load(f)
-
-    nodes = {node["id"]: node for node in process_model["nodes"]}
-    task_node = nodes.get(task_name)
-
-    if not task_node:
-        raise ValueError(f"Task '{task_name}' not found in the process model.")
-
-    resource = task_node.get("resource")
-
-    if resource:
-        active_resources[resource] -= 1
-
-        if resource_wait_queue[resource]:
-            next_token_id, next_task_name, queued_time = resource_wait_queue[resource].pop(0)
-            wait_duration = (datetime.now() - queued_time).total_seconds() / 60
-
-            if next_task_name not in activity_processing_times:
-                activity_processing_times[next_task_name] = {"wait_times": [], "process_times": [], "tokens_started": 0}
-
-            activity_processing_times[next_task_name]["wait_times"].append(wait_duration)
-
-            heapq.heappush(event_queue, (datetime.now(), next_token_id, next_task_name, "start"))
-            logging.info(f"Token {next_token_id} started from wait queue for '{next_task_name}' after waiting {wait_duration:.2f} minutes.")
-
-# Helper function to process events
-def process_events(event_queue, active_tokens, active_resources, resource_wait_queue, activity_processing_times):
-    """
-    Process all events in the simulation.
-    """
-    while event_queue:
-        event_time, token_id, task_name, event_type = heapq.heappop(event_queue)
-
-        if event_type == 'start':
-            start_token_processing(
-                token_id=token_id,
-                task_name=task_name,
-                start_time=event_time,
-                active_resources=active_resources,
-                resource_wait_queue=resource_wait_queue,
-                activity_processing_times=activity_processing_times,
-                event_queue=event_queue,
-                active_tokens=active_tokens  # Pass the missing active_tokens argument
-            )
-
-        elif event_type == 'end':
-            logging.info(f"Token {token_id} completed task '{task_name}' at {event_time}.")
-            release_resources(
-                task_name=task_name,
-                active_resources=active_resources,
-                resource_wait_queue=resource_wait_queue,
-                event_queue=event_queue,
-                activity_processing_times=activity_processing_times
-            )
 
 def run_simulation(json_file_path, simulation_days, start_time):
     """

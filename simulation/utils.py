@@ -116,3 +116,45 @@ def get_task_duration(task_name, simulation_metrics):
 
     logging.warning(f"Task duration not found for '{task_name}'. Defaulting to None.")
     return None
+
+def choose_node(source_node, links):
+    """
+    Determine the next node(s) based on the gateway type of the source node.
+    If the gateway is empty or does not exist, find the next target node(s) using the links.
+    """
+    gateway = source_node.get("gateway", None)
+    nodetype = source_node.get("type", None)
+    source_id = source_node["id"]
+
+    if gateway == "[Parallel Gateway]":
+        # Return all target nodes linked to the source
+        return [link["target"] for link in links if link["source"] == source_id]
+
+    elif gateway == "[Exclusive Gateway]" and "CONDITION-" not in nodetype:
+        # Collect probabilities from source node attributes
+        probabilities = {k.lower(): v for k, v in source_node.items() if isinstance(v, (int, float)) and v < 1}
+        if not probabilities or sum(probabilities.values()) != 1:
+            raise ValueError(f"Invalid probabilities for Exclusive Gateway at node '{source_id}'.")
+
+        # Randomly select based on probabilities
+        choice = random.choices(
+            population=list(probabilities.keys()),
+            weights=list(probabilities.values()),
+            k=1
+        )[0]
+
+        # Find the matching target node
+        condition_type = f"CONDITION-{choice.capitalize()}"
+        return [
+            link["target"] for link in links
+            if link["source"] == source_id and link["type"].lower() == condition_type.lower()
+        ]
+
+    elif gateway == "[Inclusive Gateway]":
+        # Select one target node at random for now
+        candidates = [link["target"] for link in links if link["source"] == source_id]
+        if candidates:
+            return [random.choice(candidates)]
+
+    # Default: no gateway logic, find direct target(s) from links
+    return [link["target"] for link in links if link["source"] == source_id]
