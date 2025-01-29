@@ -31,6 +31,8 @@ def main():
 
     simulation_days = 2
     start_time = datetime(2025, 1, 5, 0, 0)
+    number_workdays = 5
+    number_work_hours_per_day = 6
     RANDOM_SEED = 10
     random.seed(RANDOM_SEED)
 
@@ -53,7 +55,7 @@ def main():
     diagram_process(json_file_path)
 
     # Run the simulation
-    run_simulation(json_file_path, simulation_days, start_time)
+    run_simulation(json_file_path, simulation_days, start_time, number_workdays, number_work_hours_per_day)
 
 if __name__ == "__main__":
     main()
