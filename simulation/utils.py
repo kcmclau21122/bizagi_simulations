@@ -53,7 +53,6 @@ def advance_time_in_seconds(current_time, event_queue, active_resources, resourc
                 active_tokens[token_id]['wait_start_time'] = None
 
 # Fetch conditional probabilities
-# Fetch conditional probabilities
 def get_condition_probability(simulation_metrics, from_activity, condition_type):
     # Normalize column names to lowercase for consistent access
     simulation_metrics.columns = map(str.lower, simulation_metrics.columns)
@@ -70,52 +69,31 @@ def get_condition_probability(simulation_metrics, from_activity, condition_type)
     return 0.5  # Default probability
 
 # Check if the current time is within work hours and days
-def is_work_time(current_time):
-    work_start = datetime.combine(current_time.date(), datetime.min.time()) + timedelta(hours=6)
-    work_end = datetime.combine(current_time.date(), datetime.min.time()) + timedelta(hours=12)
-    is_work_day = current_time.weekday() < 5  # Monday to Friday
-    return is_work_day and work_start <= current_time < work_end
+def is_work_time(current_time, start_time, number_workdays, number_work_hours_per_day):
+    """
+    Check if the given time falls within designated work hours and workdays.
+    """
+    work_start_hour = start_time.hour
+    work_end_hour = work_start_hour + number_work_hours_per_day
+    is_work_day = current_time.weekday() <= number_workdays  # Work is allowed for the specified number of days
+    return is_work_day and work_start_hour <= current_time.hour < work_end_hour
 
-
-# Advance to the next work time if outside of work hours
-def advance_to_work_time(current_time):
-    if current_time.weekday() >= 5 or current_time.hour >= 12:  # Weekend or after work hours
-        days_to_advance = (7 - current_time.weekday()) % 7 if current_time.weekday() >= 5 else 1
-        current_time = datetime.combine(current_time.date(), datetime.min.time()) + timedelta(days=days_to_advance, hours=6)
-    elif current_time.hour < 6:  # Before work hours
-        current_time = datetime.combine(current_time.date(), datetime.min.time()) + timedelta(hours=6)
+def advance_to_work_time(current_time, start_time, number_workdays, number_work_hours_per_day):
+    """
+    Advance the given time to the next available work period if outside work hours.
+    """
+    work_start_hour = start_time.hour
+    work_end_hour = work_start_hour + number_work_hours_per_day
+    
+    # If outside work hours, move to the next work period
+    if current_time.weekday() >= number_workdays or current_time.hour >= work_end_hour:
+        days_to_advance = (7 - current_time.weekday()) % 7 if current_time.weekday() >= number_workdays else 1
+        current_time = datetime.combine(current_time.date() + timedelta(days=days_to_advance),
+                                        datetime.min.time()) + timedelta(hours=work_start_hour)
+    elif current_time.hour < work_start_hour:  # Before work hours
+        current_time = datetime.combine(current_time.date(), datetime.min.time()) + timedelta(hours=work_start_hour)
+    
     return current_time
-
-# Get task duration
-def get_task_duration(task_name, simulation_metrics):
-    """
-    Calculate task duration using Bizagi's triangular distribution. 
-    Return None if Min Time, Avg Time, and Max Time are all None.
-    """
-    # Normalize column names to lowercase for consistent access
-    simulation_metrics.columns = map(str.lower, simulation_metrics.columns)
-
-    row = simulation_metrics.loc[simulation_metrics['name'].str.lower() == task_name.lower()]
-    if not row.empty:
-        min_time = row['min time'].iloc[0]
-        avg_time = row['avg time'].iloc[0]
-        max_time = row['max time'].iloc[0]
-
-        if pd.isna(min_time) and pd.isna(avg_time) and pd.isna(max_time):
-            logging.info(f"No processing time specified for task '{task_name}'. Skipping processing time.")
-            return None
-
-        # Ensure values for calculation
-        min_time = int(min_time) if pd.notna(min_time) else 1
-        avg_time = int(avg_time) if pd.notna(avg_time) else min_time
-        max_time = int(max_time) if pd.notna(max_time) else avg_time
-
-        duration = int(random.triangular(min_time, avg_time, max_time))
-        logging.info(f"Calculated duration for '{task_name}': Min = {min_time}, Avg = {avg_time}, Max = {max_time}, Chosen = {duration}")
-        return duration
-
-    logging.warning(f"Task duration not found for '{task_name}'. Defaulting to None.")
-    return None
 
 def choose_node(source_node, links):
     """

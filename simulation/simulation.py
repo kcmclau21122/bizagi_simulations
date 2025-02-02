@@ -2,7 +2,7 @@
 from datetime import datetime, timedelta
 import json
 import heapq
-from simulation.utils import is_work_time, advance_to_work_time, get_task_duration, get_condition_probability, advance_time_in_seconds, choose_node
+from simulation.utils import is_work_time, advance_to_work_time, get_condition_probability, advance_time_in_seconds, choose_node
 from simulation.reporting import print_processing_times_and_utilization, save_simulation_report
 from simulation.data_handler import extract_start_tasks_from_json
 import logging
@@ -73,8 +73,8 @@ def release_resources(task_name, active_resources, resource_wait_queue, event_qu
             logging.info(f"Token {next_token_id} started from wait queue for '{next_task_name}' after waiting {wait_duration:.2f} minutes.")
 
 # Helper function to process events
-# Helper function to process events
-def process_events(event_queue, active_tokens, active_resources, resource_wait_queue, activity_processing_times):
+def process_events(event_queue, active_tokens, active_resources, resource_wait_queue, activity_processing_times, start_time,
+                   number_workdays, number_work_hours_per_day):
     """
     Process all events in the simulation.
     """
@@ -93,12 +93,15 @@ def process_events(event_queue, active_tokens, active_resources, resource_wait_q
             start_token_processing(
                 token_id=token_id,
                 task_name=task_name,
-                start_time=event_time,
+                start_time = start_time,
+                token_start_time=event_time,  # Fixed: pass `start_time`
                 active_resources=active_resources,
                 resource_wait_queue=resource_wait_queue,
                 activity_processing_times=activity_processing_times,
                 event_queue=event_queue,
-                active_tokens=active_tokens
+                active_tokens=active_tokens,
+                number_workdays=number_workdays,
+                number_work_hours_per_day=number_work_hours_per_day  # Fixed: pass missing argument
             )
 
         elif event_type == 'end':
@@ -148,11 +151,11 @@ def process_events(event_queue, active_tokens, active_resources, resource_wait_q
                 # Add next task to the event queue
                 heapq.heappush(event_queue, (next_start_time, token_id, next_task_name, "start"))
 
-
 # Function to start token processing
-def start_token_processing(token_id, task_name, start_time, active_resources, resource_wait_queue, activity_processing_times, event_queue, active_tokens):
+def start_token_processing(token_id, task_name, start_time, token_start_time, active_resources, resource_wait_queue,
+                           activity_processing_times, event_queue, active_tokens, number_workdays, number_work_hours_per_day):
     """
-    Start processing a token for a given task, considering resource availability and wait times.
+    Start processing a token for a given task, considering resource availability, wait times, and work hours.
     """
     with open('process_model.json', 'r') as f:
         process_model = json.load(f)
@@ -166,18 +169,25 @@ def start_token_processing(token_id, task_name, start_time, active_resources, re
     resource = task_node.get("resource")
     available_resources = task_node.get("available resources", 0)
 
+    # Ensure the start time is within work hours
+    if not is_work_time(token_start_time, start_time, number_workdays, number_work_hours_per_day):
+        logging.info(f"Token {token_id} cannot start task '{task_name}' at {token_start_time} (outside work hours).")
+        next_work_time = advance_to_work_time(token_start_time, start_time, number_workdays, number_work_hours_per_day)
+        heapq.heappush(event_queue, (next_work_time, token_id, task_name, "start"))
+        return False
+
     # Check resource availability
     if resource and active_resources[resource] >= available_resources:
-        resource_wait_queue[resource].append((token_id, task_name, start_time))
-        logging.info(f"Token {token_id} added to wait queue for {task_name} at {start_time}.")
+        resource_wait_queue[resource].append((token_id, task_name, token_start_time))
+        logging.info(f"Token {token_id} added to wait queue for '{task_name}' at {token_start_time}.")
         return False
 
     if resource:
         active_resources[resource] += 1
 
     active_tokens[token_id]["current_task"] = task_name
-    active_tokens[token_id]["start_time"] = start_time
-    logging.info(f"Token {token_id} started task '{task_name}' at {start_time}.")
+    active_tokens[token_id]["start_time"] = token_start_time
+    logging.info(f"Token {token_id} started task '{task_name}' at {token_start_time}.")
 
     if task_name not in activity_processing_times:
         activity_processing_times[task_name] = {"wait_times": [], "process_times": [], "tokens_started": 0}
@@ -190,7 +200,12 @@ def start_token_processing(token_id, task_name, start_time, active_resources, re
         task_node.get("avg time", 0),
         task_node.get("max time", 0)
     )
-    end_time = start_time + timedelta(minutes=task_duration)
+    end_time = token_start_time + timedelta(minutes=task_duration)
+
+    # Ensure the end time is within work hours
+    if not is_work_time(end_time, start_time, number_workdays, number_work_hours_per_day):
+        logging.info(f"Token {token_id} cannot end task '{task_name}' at {end_time} (outside work hours).")
+        end_time = advance_to_work_time(end_time, start_time, number_workdays, number_work_hours_per_day)
 
     # Track processing time
     activity_processing_times[task_name]["process_times"].append(task_duration)
@@ -200,7 +215,8 @@ def start_token_processing(token_id, task_name, start_time, active_resources, re
 
     return True
 
-def run_simulation(json_file_path, simulation_days, start_time):
+
+def run_simulation(json_file_path, simulation_days, start_time, number_workdays, number_work_hours_per_day):
     """
     Run the simulation process using parameters from the JSON file.
     """
@@ -232,6 +248,6 @@ def run_simulation(json_file_path, simulation_days, start_time):
         active_tokens[token_id] = {"current_task": None, "start_time": None, "wait_start_time": None, "total_wait_time": 0, "completed_tasks": []}
 
     # Corrected process_events call
-    process_events(event_queue, active_tokens, active_resources, resource_wait_queue, activity_processing_times)
+    process_events(event_queue, active_tokens, active_resources, resource_wait_queue, activity_processing_times, start_time, number_workdays, number_work_hours_per_day)
 
     logging.info(f"Simulation complete. Processing times: {activity_processing_times}")
