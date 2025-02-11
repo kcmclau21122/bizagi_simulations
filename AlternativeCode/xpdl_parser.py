@@ -4,7 +4,7 @@
 
 import xml.etree.ElementTree as ET
 from typing import Dict, List
-from AlternativeCode.models import ProcessNode, ProcessTransition
+from models import ProcessNode, ProcessTransition
 
 class XPDLParser:
     NAMESPACE = {'xpdl': 'http://www.wfmc.org/2008/XPDL2.2'}

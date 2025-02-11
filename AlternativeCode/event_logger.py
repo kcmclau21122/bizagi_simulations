@@ -5,7 +5,7 @@
 from datetime import datetime
 from typing import List
 from pathlib import Path
-from .models import SimulationEvent
+from models import SimulationEvent
 
 class EventLogger:
     def __init__(self):

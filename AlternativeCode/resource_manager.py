@@ -3,7 +3,7 @@
 # Created: 2 Feb 2025
 
 from typing import Dict, Any
-from AlternativeCode.models import SimulationEvent
+from models import SimulationEvent
 import pandas as pd
 
 class ResourceManager:

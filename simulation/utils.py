@@ -75,7 +75,7 @@ def is_work_time(current_time, start_time, number_workdays, number_work_hours_pe
     """
     work_start_hour = start_time.hour
     work_end_hour = work_start_hour + number_work_hours_per_day
-    is_work_day = current_time.weekday() <= number_workdays  # Work is allowed for the specified number of days
+    is_work_day = current_time.weekday() < number_workdays  # Work is allowed for the specified number of days
     return is_work_day and work_start_hour <= current_time.hour < work_end_hour
 
 def advance_to_work_time(current_time, start_time, number_workdays, number_work_hours_per_day):
