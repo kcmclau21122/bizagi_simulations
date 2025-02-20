@@ -6,12 +6,17 @@ import pandas as pd
 from typing import Dict, Any
 from pathlib import Path
 
+# ExcelLoader class (updated)
+import pandas as pd
+from typing import Dict, Any
+from pathlib import Path
+
 class ExcelLoader:
     @staticmethod
-    def load_all_sheets(file_path: Path) -> Dict[str, Any]:
+    def load_all_sheets(file_path: Path) -> Dict[str, pd.DataFrame]:
         """
         Loads all sheets and their columns with values from the provided spreadsheet.
-        Returns a dictionary where keys are sheet names and values are DataFrames or dictionaries.
+        Returns a dictionary where keys are sheet names and values are DataFrames.
         """
         xls = pd.ExcelFile(file_path)
         sheets_data = {}
@@ -23,6 +28,6 @@ class ExcelLoader:
             if df.columns[0] is None:
                 df.reset_index(drop=True, inplace=True)
             
-            sheets_data[sheet_name] = df.to_dict(orient='list')  # Convert DataFrame to dictionary
+            sheets_data[sheet_name] = df  # Keep as DataFrame, not dictionary
         
         return sheets_data

@@ -3,40 +3,47 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, Any
 import random
-from models import ProcessNode, SimulationEvent
+from models import ProcessNode, SimulationEvent, Token
 from xpdl_parser import XPDLParser
 from excel_loader import ExcelLoader
 from resource_manager import ResourceManager
 from time_calculator import TimeCalculator
 from event_logger import EventLogger
+import pandas as pd
 
 class SimulationEngine:
     def __init__(self, xpdl_path: Path, excel_path: Path):
-        self.process = XPDLParser.parse_xpdl(xpdl_path)
+        # Parse XPDL directly using XPDLParser
+        parser_result = XPDLParser.parse_xpdl(str(xpdl_path))
+        self.nodes = list(parser_result['nodes'].values())  # List of ProcessNode objects
+        self.transitions = parser_result['transitions']  # List of ProcessTransition objects
         self.params = ExcelLoader.load_all_sheets(excel_path)
-        self.resource_manager = ResourceManager(self.params.get('Resources', {}))
-        self.time_calculator = TimeCalculator()
-        self.logger = EventLogger()
-        self.event_queue = []
-        self.current_time = datetime.now()
+        self.event_queue = []  # Use list with heapq for priority queue (time-based)
         self.token_counter = 0
-
-    def run(self, output_path: Path):
-        self._schedule_initial_events()
-        self._process_events()
-        self.logger.write_log_file(output_path / 'simulation_log.txt')
-        self._export_process_json(output_path / 'process_structure.json')
+        self.current_time = 0
+        self.logger = EventLogger()
+        self.resource_manager = ResourceManager(self.params.get('Resources', pd.DataFrame()))
+        self.time_calculator = TimeCalculator()  # Assuming TimeCalculator is available
 
     def _schedule_initial_events(self):
         arrival_rate = self.params.get('ArrivalRate', {})
-        interval = arrival_rate.get('IntervalMinutes', 10)
-        num_tokens = arrival_rate.get('NumberOfTokens', 1)
+        interval = arrival_rate.get('IntervalMinutes', 10)  # Default 10 minutes
+        num_tokens = arrival_rate.get('NumberOfTokens', 1)  # Default 1 token
+        
+        # Find the starting node (activity with 'start' in name)
+        start_node = next(
+            (n for n in self.nodes if n.node_type == 'activity' and 'start' in n.name.lower()),
+            None
+        )
+        if start_node is None:
+            raise ValueError("No starting activity node found with 'start' in name")
         
         for _ in range(num_tokens):
             arrival_time = self.current_time + timedelta(
-                minutes=random.expovariate(1 / interval)
+                minutes=random.expovariate(1 / interval)  # Exponential inter-arrival times
             )
-            heapq.heappush(self.event_queue, (arrival_time, 'TOKEN_ARRIVAL', None))
+            token = Token(current_node_id=start_node.id)  # Create Token with starting node ID
+            heapq.heappush(self.event_queue, (arrival_time, 'TOKEN_ARRIVAL', token))
 
     def _process_events(self):
         while self.event_queue:
@@ -44,25 +51,64 @@ class SimulationEngine:
             self.current_time = event_time
             
             if event_type == 'TOKEN_ARRIVAL':
-                self._handle_token_arrival()
+                self._handle_token_arrival(event_data)  # Pass the token
             elif event_type == 'PROCESS_NODE':
                 self._handle_process_node(event_data)
             elif event_type == 'ACTIVITY_COMPLETE':
                 self._handle_activity_completion(event_data)
 
-    def _handle_token_arrival(self):
+    def _handle_token_arrival(self, token: Token):
+        """
+        Handles the arrival of a token at a node, determining the next steps based on the node's type.
+        """
+        self.logger.add_event(SimulationEvent(
+            timestamp=self.current_time,
+            token=token_id,
+            node=token.current_node_id,
+            event_type='DEBUG',
+            details={'message': f"Token current_node_id: {token.current_node_id}"}
+        ))
+
+        self.logger.add_event(SimulationEvent(
+            timestamp=self.current_time,
+            token=token_id,
+            node=token.current_node_id,
+            event_type='DEBUG',
+            details={'message': f"Process model nodes: {[node.id for node in self.nodes]}"}
+        ))
+
+        start_node = next(
+            (node for node in self.nodes if node.id == token.current_node_id),
+            None
+        )
+        
+        if start_node is None:
+            raise ValueError(f"No node found with ID {token.current_node_id} in process model nodes")
+        
         self.token_counter += 1
         token_id = self.token_counter
-        start_node = next(
-            n for n in self.process['nodes'].values()
-            if n.node_type == 'activity' and 'start' in n.name.lower()
-        )
         
         self.logger.add_event(SimulationEvent(
             timestamp=self.current_time,
             token=token_id,
-            node=None,
+            node=start_node.id,
             event_type='TOKEN_CREATED'
+        ))
+        
+        # Log token and node information instead of printing
+        self.logger.add_event(SimulationEvent(
+            timestamp=self.current_time,
+            token=token_id,
+            node=start_node.id,
+            event_type='DEBUG',
+            details={'message': f"Token arrived at node {token.current_node_id}"}
+        ))
+        self.logger.add_event(SimulationEvent(
+            timestamp=self.current_time,
+            token=token_id,
+            node=start_node.id,
+            event_type='DEBUG',
+            details={'message': f"Available nodes: {[node.id for node in self.nodes]}"}
         ))
         
         self._schedule_node_processing(token_id, start_node.id)
@@ -70,20 +116,26 @@ class SimulationEngine:
     def _handle_process_node(self, event_data: Dict):
         token_id = event_data['token']
         node_id = event_data['node']
-        node = self.process['nodes'][node_id]
+        node = next((n for n in self.nodes if n.id == node_id), None)
+        
+        if node is None:
+            raise ValueError(f"No node found with ID {node_id}")
         
         if node.node_type == 'activity':
             self._process_activity(token_id, node)
-        else:
+        elif node.node_type in ['exclusive', 'parallel']:
             self._process_gateway(token_id, node)
-
+            
     def _process_activity(self, token_id: int, node: ProcessNode):
-        activity_times = self.params.get('Activity Times', {})
-        required_resources = self._get_required_resources(node.name)
+        activity_times = self.params.get('ActivityTimes', {})
+        times = activity_times.get(node.name, {'min': 1, 'mode': 5, 'max': 10})  # Default values
         duration = self.time_calculator.triangular_duration(
-            **activity_times.get(node.name, {'min': 1, 'avg': 2, 'max': 3})
+            min_value=times['min'],
+            mode_value=times['mode'],  # Use 'mode' instead of 'avg' for triangular
+            max_value=times['max']
         )
         
+        required_resources = self._get_required_resources(node.name)
         can_start = all(
             self.resource_manager.get_available_resources(rt, self.current_time, duration) >= qty
             for rt, qty in required_resources.items()
@@ -115,17 +167,31 @@ class SimulationEngine:
         )
     
     def _process_gateway(self, token_id: int, node: ProcessNode):
+        outgoing_transitions = [t for t in self.transitions if t.from_node == node.id]
         next_nodes = []
-        if node.gateway_type == 'exclusive':
-            outgoing = [t for t in self.process['transitions'] if t.from_node == node.id]
-            probs = [self.params['gateway_probs'].get(t.id, 1) for t in outgoing]
-            chosen = random.choices(outgoing, weights=probs)[0]
-            next_nodes.append(chosen.to_node)
-        elif node.gateway_type == 'parallel':
-            next_nodes = [t.to_node for t in self.process['transitions'] if t.from_node == node.id]
         
-        for n in next_nodes:
-            self._schedule_node_processing(token_id, n)
+        if node.node_type == 'exclusive':
+            if not outgoing_transitions:
+                raise ValueError(f"No outgoing transitions for exclusive gateway {node.id}")
+            
+            # Use gateway probabilities if provided, otherwise use uniform/triangular distribution
+            probs = self.params.get('gateway_probs', {}).get(node.id, None)
+            if probs:
+                # probs is a dict of transition IDs to probabilities (summing to 1)
+                weights = [probs.get(t.id, 1.0 / len(outgoing_transitions)) for t in outgoing_transitions]
+            else:
+                # Default to triangular distribution for probabilities (simulating Bizagi's behavior)
+                weights = [self.time_calculator.triangular_probability(0, 0.5, 1) for _ in outgoing_transitions]
+                weights = [w / sum(weights) for w in weights]  # Normalize to sum to 1
+            
+            chosen_transition = random.choices(outgoing_transitions, weights=weights)[0]
+            next_nodes.append(chosen_transition.to_node)
+        
+        elif node.node_type == 'parallel':
+            next_nodes = [t.to_node for t in outgoing_transitions]
+        
+        for next_node_id in next_nodes:
+            self._schedule_node_processing(token_id, next_node_id)
     
     def _schedule_node_processing(self, token_id: int, node_id: str):
         heapq.heappush(
@@ -137,6 +203,12 @@ class SimulationEngine:
         import json
         with open(output_path, 'w') as f:
             json.dump({
-                'nodes': {nid: vars(node) for nid, node in self.process['nodes'].items()},
-                'transitions': [vars(t) for t in self.process['transitions']]
+                'nodes': {node.id: vars(node) for node in self.nodes},
+                'transitions': [vars(t) for t in self.transitions]
             }, f, indent=4)
+
+    def run(self, output_path: Path):
+        self._schedule_initial_events()
+        self._process_events()
+        self.logger.write_log_file(output_path / 'simulation_log.txt')
+        self._export_process_json(output_path / 'process_structure.json')

@@ -40,3 +40,7 @@ class CalendarResource:
     calendar_name: str
     resource_type: str
     count: int
+
+class Token:
+    def __init__(self, current_node_id: str):
+        self.current_node_id = current_node_id
