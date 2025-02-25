@@ -1,68 +1,63 @@
+# Contains XPDLParser class with parse_xpdl method. 
+# # Returns a dictionary of nodes and transitions, converting XML elements into the data classes.
+# Created Date: 2 Feb 2025
+
 import xml.etree.ElementTree as ET
-import json
 from typing import Dict, List
-from pathlib import Path
 from models import ProcessNode, ProcessTransition
 from event_logger import EventLogger
 from models import SimulationEvent
 from datetime import datetime
+from pathlib import Path
+
 
 class XPDLParser:
     NAMESPACE = {'xpdl': 'http://www.wfmc.org/2008/XPDL2.2'}
-    logger = EventLogger()
+    logger = EventLogger()  # Initialize logger
 
     @classmethod
-    def parse_xpdl(cls, file_path: str, json_output_path: str = "xpdl_parsed.json") -> Dict:
+    def parse_xpdl(cls, file_path: str) -> Dict:
         tree = ET.parse(file_path)
         root = tree.getroot()
-
+        
         nodes = cls._parse_nodes(root)
         transitions = cls._parse_transitions(root)
 
-        parsed_data = {
-            'nodes': {node.id: vars(node) for node in nodes},  # Convert ProcessNode objects to dicts
-            'transitions': [vars(t) for t in transitions]  # Convert ProcessTransition objects to dicts
-        }
-
-        # Save as JSON
-        with open(json_output_path, 'w') as json_file:
-            json.dump(parsed_data, json_file, indent=4)
-
-        # Log the parsing operation
-        cls.logger.add_event(SimulationEvent(
-            timestamp=datetime.now(),
-            token=-1,
-            node="SYSTEM",
-            event_type="XPDL_PARSED",
-            details={"message": f"XPDL parsed and saved to {json_output_path}"}
-        ))
+        # Save log after parsing
         cls.logger.write_log_file(Path("xpdl_parsing_log.txt"))
 
-        return parsed_data
+        return {'nodes': nodes, 'transitions': transitions}
 
     @classmethod
-    def _parse_nodes(cls, root: ET.Element) -> List[ProcessNode]:
-        nodes = []
+    def _parse_nodes(cls, root: ET.Element) -> Dict[str, ProcessNode]:
+        nodes = {}
+        log_path = Path("xpdl_parsing_log.txt")  # Define log path
+
         for element in root.findall('.//xpdl:Activity', cls.NAMESPACE):
             node_id = element.attrib['Id']
             node_name = element.attrib.get('Name', 'Unnamed Node')
 
+            # Log node parsing details
             cls.logger.add_event(SimulationEvent(
                 timestamp=datetime.now(),
-                token=-1,
+                token=-1,  # -1 to indicate system-level event
                 node=node_id,
                 event_type="NODE_PARSED",
                 details={'Node Name': node_name}
             ))
 
-            nodes.append(cls._create_node(element))
+            # Immediately write to log after each node is added
+            cls.logger.write_log_file(log_path)
+
+            nodes[node_id] = cls._create_node(element)
+
         return nodes
 
     @classmethod
     def _create_node(cls, element: ET.Element) -> ProcessNode:
         node_type = 'activity'
         gateway_type = None
-
+        
         if route := element.find('.//xpdl:Route', cls.NAMESPACE):
             node_type = 'gateway'
             gateway_element = route.find('.//xpdl:GatewayType', cls.NAMESPACE)

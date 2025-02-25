@@ -1,9 +1,10 @@
+import json
 import heapq
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, Any
 import random
-from models import ProcessNode, SimulationEvent, Token
+from models import ProcessNode, ProcessTransition, SimulationEvent, Token
 from xpdl_parser import XPDLParser
 from excel_loader import ExcelLoader
 from resource_manager import ResourceManager
@@ -12,37 +13,60 @@ from event_logger import EventLogger
 import pandas as pd
 
 class SimulationEngine:
-    def __init__(self, xpdl_path: Path, excel_path: Path):
-        # Parse XPDL directly using XPDLParser
-        parser_result = XPDLParser.parse_xpdl(str(xpdl_path))
-        self.nodes = list(parser_result['nodes'].values())  # List of ProcessNode objects
-        self.transitions = parser_result['transitions']  # List of ProcessTransition objects
+    def __init__(self, xpdl_path: Path, excel_path: Path, json_parsed_path: Path = Path("xpdl_parsed.json")):
+        if json_parsed_path.exists():
+            # Load from JSON if available
+            with open(json_parsed_path, 'r') as json_file:
+                parser_result = json.load(json_file)
+            
+            # Convert JSON back to ProcessNode & ProcessTransition objects
+            self.nodes = {k: ProcessNode(**v) for k, v in parser_result['nodes'].items()}
+            self.transitions = [ProcessTransition(**t) for t in parser_result['transitions']]
+        else:
+            # Parse XPDL if JSON doesn't exist
+            parser_result = XPDLParser.parse_xpdl(str(xpdl_path), str(json_parsed_path))
+            self.nodes = {k: ProcessNode(**v) for k, v in parser_result['nodes'].items()}
+            self.transitions = [ProcessTransition(**t) for t in parser_result['transitions']]
+
         self.params = ExcelLoader.load_all_sheets(excel_path)
-        self.event_queue = []  # Use list with heapq for priority queue (time-based)
+        self.event_queue = []
         self.token_counter = 0
         self.current_time = 0
         self.logger = EventLogger()
         self.resource_manager = ResourceManager(self.params.get('Resources', pd.DataFrame()))
-        self.time_calculator = TimeCalculator()  # Assuming TimeCalculator is available
+        self.time_calculator = TimeCalculator()
+
 
     def _schedule_initial_events(self):
-        arrival_rate = self.params.get('ArrivalRate', {})
-        interval = arrival_rate.get('IntervalMinutes', 10)  # Default 10 minutes
-        num_tokens = arrival_rate.get('NumberOfTokens', 1)  # Default 1 token
-        
-        # Find the starting node (activity with 'start' in name)
+        # Ensure the correct sheet name is used
+        arrival_rate_df = self.params.get('ArrivalRate', pd.DataFrame())
+
+        if arrival_rate_df.empty:
+            raise ValueError("ArrivalRate sheet is missing or empty in the Excel file.")
+
+        # Extracting the first row as a dictionary (assuming only one row exists)
+        arrival_rate = arrival_rate_df.iloc[0].to_dict()
+
+        # Extract required parameters
+        num_tokens = int(arrival_rate.get('Number Of Tokens', 1))
+        min_interval = float(arrival_rate.get('Minimum Arrival Time', 1))
+        avg_interval = float(arrival_rate.get('Average Arrival Time', 2))
+        max_interval = float(arrival_rate.get('Maximum Arrival Time', 5))
+
+        # Find the starting node
         start_node = next(
             (n for n in self.nodes if n.node_type == 'activity' and 'start' in n.name.lower()),
             None
         )
         if start_node is None:
             raise ValueError("No starting activity node found with 'start' in name")
-        
+
         for _ in range(num_tokens):
-            arrival_time = self.current_time + timedelta(
-                minutes=random.expovariate(1 / interval)  # Exponential inter-arrival times
-            )
-            token = Token(current_node_id=start_node.id)  # Create Token with starting node ID
+            # Using triangular distribution for arrival interval
+            arrival_interval = random.triangular(min_interval, avg_interval, max_interval)
+            arrival_time = self.current_time + timedelta(minutes=arrival_interval)
+            
+            token = Token(current_node_id=start_node.id)
             heapq.heappush(self.event_queue, (arrival_time, 'TOKEN_ARRIVAL', token))
 
     def _process_events(self):

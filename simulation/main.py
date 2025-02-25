@@ -1,10 +1,10 @@
 # Main code file for the Bizagi Simulator emulator
 
-from simulation.simulation import run_simulation
-from simulation.utils import get_simulation_parameters
-from simulation.data_handler import build_paths, diagram_process, extract_start_tasks_from_json
-from simulation.reporting import save_simulation_report
-from simulation.xpdl_parser import parse_xpdl_to_sequences
+from simulation import run_simulation
+from utils import get_simulation_parameters
+from data_handler import build_paths, diagram_process, extract_start_tasks_from_json
+from reporting import save_simulation_report
+from xpdl_parser import parse_xpdl_to_sequences
 import pandas as pd
 from datetime import datetime
 import random

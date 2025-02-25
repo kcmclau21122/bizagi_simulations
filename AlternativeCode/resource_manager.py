@@ -12,7 +12,7 @@ class ResourceManager:
 
     def _initialize_resources(self, resources_df: pd.DataFrame) -> Dict[str, Dict]:
         return {
-            row['ResourceType']: {
+            row['Resource Type']: {
                 'total': row['Count'],
                 'available': row['Count'],
                 'allocated': 0

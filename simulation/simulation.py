@@ -2,9 +2,9 @@
 from datetime import datetime, timedelta
 import json
 import heapq
-from simulation.utils import is_work_time, advance_to_work_time, get_condition_probability, advance_time_in_seconds, choose_node
-from simulation.reporting import print_processing_times_and_utilization, save_simulation_report
-from simulation.data_handler import extract_start_tasks_from_json
+from utils import is_work_time, advance_to_work_time, get_condition_probability, advance_time_in_seconds, choose_node
+from reporting import print_processing_times_and_utilization, save_simulation_report
+from data_handler import extract_start_tasks_from_json
 import logging
 import random
 from collections import defaultdict

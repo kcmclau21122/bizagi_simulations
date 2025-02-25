@@ -4,7 +4,7 @@ import logging
 import random
 import pandas as pd
 import heapq
-from simulation.event import Event
+from event import Event
 
 # Read simulation parameters
 def get_simulation_parameters(simulation_metrics):
