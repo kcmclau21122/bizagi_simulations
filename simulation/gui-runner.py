@@ -721,6 +721,7 @@ class BizagiSimulatorGUI:
             return False
         
         return True
+
     
     def save_settings(self):
         """Save current GUI settings to a file"""
