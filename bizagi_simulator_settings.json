@@ -1,0 +1,18 @@
+{
+    "xpdl_file_path": "C:/Users/kcmclau.EVOFORGE/Repos/bizagi_simulations/Bizagi/5.5_1/5.5.13 Real Property-Monthly Reviews-2.xpdl",
+    "metrics_file_path": "C:/Users/kcmclau.EVOFORGE/Repos/bizagi_simulations/Bizagi/simulation_metrics-2.xlsx",
+    "simulation_days": 2,
+    "target_avg_time": 0.0,
+    "random_seed": 10,
+    "workdays": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+    ],
+    "work_hours_start": 7,
+    "work_hours_end": 13
+}

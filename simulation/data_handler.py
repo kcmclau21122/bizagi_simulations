@@ -5,9 +5,9 @@ import re
 from networkx.readwrite import json_graph
 import networkx as nx
 import matplotlib.pyplot as plt
-from networkx.readwrite import json_graph
 import networkx as nx
-
+import threading
+import os
 
 def build_paths(file_path, simulation_metrics):
     with open(file_path, "r") as file:
@@ -87,8 +87,8 @@ def build_paths(file_path, simulation_metrics):
         # Add edge to the graph
         process_model.add_edge(source_name, target_name, type=edge_type)
 
-    # Convert the graph to JSON
-    process_model_data = json_graph.node_link_data(process_model)
+    # Convert the graph to JSON - explicitly set edges parameter
+    process_model_data = json_graph.node_link_data(process_model, edges="links")
 
     # Save the updated JSON file
     json_output_path = "process_model.json"
@@ -98,6 +98,10 @@ def build_paths(file_path, simulation_metrics):
     return json_output_path
 
 def diagram_process(json_output_path):
+    """
+    Create a diagram of the process model and save it to a file.
+    This function should be called in the main thread to avoid matplotlib warnings.
+    """
     # Load the JSON file
     with open(json_output_path, "r") as json_file:
         json_data = json.load(json_file)
@@ -127,6 +131,9 @@ def diagram_process(json_output_path):
         # Store the shape for the node
         node_shapes[node] = node_shape
 
+    # Use Agg backend for non-interactive plots
+    plt.switch_backend('Agg')
+    
     # Draw the graph with custom shapes
     plt.figure(figsize=(24, 24))  # Larger figure size for better spacing
     pos = nx.spring_layout(process_model, k=8.0, scale=3.0, iterations=500)  # Adjust spacing
@@ -181,7 +188,7 @@ def diagram_process(json_output_path):
     plt.savefig(diagram_output_path)
     plt.close()
 
-    return
+    return diagram_output_path
 
 # Extract start tasks from paths DataFrame
 def extract_start_tasks_from_json(json_file_path):
@@ -208,4 +215,3 @@ def extract_start_tasks_from_json(json_file_path):
             start_tasks.add(node["id"])  # Add the id of the start task
 
     return start_tasks
-
