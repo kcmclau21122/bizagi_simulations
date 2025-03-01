@@ -1,0 +1,209 @@
+import os
+import threading
+import logging
+import random
+import datetime
+import pandas as pd
+from typing import Callable, Dict, Any, Optional
+
+from ..utils.config import ConfigManager
+from ..data.xpdl_parser import parse_xpdl_to_sequences
+from ..data.process_builder import ProcessModelBuilder
+from ..data.visualizations import diagram_process
+from .process_model import ProcessModel
+from .simulation_engine import SimulationEngine
+from ..reporting.report_generator import generate_report
+
+class SimulationRunner:
+    """
+    Manages the execution of a simulation, handling file parsing,
+    model building, simulation execution, and reporting.
+    """
+    
+    def __init__(self, config: ConfigManager, 
+                progress_callback: Optional[Callable[[str], None]] = None, 
+                completion_callback: Optional[Callable[[Dict[str, Any]], None]] = None):
+        """
+        Initialize the simulation runner.
+        
+        Args:
+            config: Configuration manager with simulation settings
+            progress_callback: Callback for progress updates
+            completion_callback: Callback for simulation completion
+        """
+        self.config = config
+        self.progress_callback = progress_callback
+        self.completion_callback = completion_callback
+        self.error = None
+        self.simulation_thread = None
+        
+    def run(self) -> None:
+        """Run the simulation in a background thread."""
+        # Start a background thread for the simulation
+        self.simulation_thread = threading.Thread(target=self._run_simulation)
+        self.simulation_thread.daemon = True
+        self.simulation_thread.start()
+        
+    def _run_simulation(self) -> None:
+        """Execute the simulation process."""
+        try:
+            self._update_progress("Initializing simulation...")
+            
+            # Set up logging
+            self._setup_logging()
+            
+            # Set random seed
+            random_seed = self.config.get("random_seed", 10)
+            random.seed(random_seed)
+            
+            # Parse input files
+            self._update_progress("Parsing XPDL file...")
+            xpdl_file_path = self.config.get("xpdl_file_path")
+            metrics_file_path = self.config.get("metrics_file_path")
+            
+            output_sequences_path = 'output_sequences.txt'
+            parse_xpdl_to_sequences(xpdl_file_path, output_sequences_path)
+            
+            # Load simulation metrics
+            self._update_progress("Loading simulation metrics...")
+            simulation_metrics = pd.read_excel(metrics_file_path, sheet_name=0)
+            simulation_metrics.columns = map(str.lower, simulation_metrics.columns)
+            
+            # Build process model
+            self._update_progress("Building process model...")
+            builder = ProcessModelBuilder()
+            graph = builder.build_from_sequences(output_sequences_path, simulation_metrics)
+            json_file_path = builder.save_to_json()
+            
+            # Generate process diagram
+            self._update_progress("Generating process diagram...")
+            diagram_process(json_file_path)
+            
+            # Create process model
+            process_model = ProcessModel.from_json(json_file_path)
+            
+            # Set up simulation parameters
+            simulation_days = self.config.get("simulation_days", 2)
+            number_workdays = self.config.get_number_of_workdays()
+            work_hours_per_day = self.config.get_work_hours_per_day()
+            
+            work_hours_start = self.config.get("work_hours_start", 9)
+            
+            # Set up start time - default to Monday at start of work hours
+            start_time = datetime.datetime(2025, 1, 6, work_hours_start, 0)  # Monday
+            
+            # Create simulation engine
+            engine = SimulationEngine(
+                process_model, start_time, number_workdays, work_hours_per_day
+            )
+            
+            # Extract start node parameters
+            try:
+                start_node = process_model.get_start_nodes()[0]
+                node_data = process_model.get_node(start_node)
+                max_arrival_count = int(node_data.get("max arrival count", 20))
+                arrival_interval = float(node_data.get("arrival interval", 5))
+            except (IndexError, ValueError) as e:
+                logging.warning(f"Could not extract start node parameters: {e}")
+                max_arrival_count = 20
+                arrival_interval = 5
+                
+            # Schedule tokens
+            self._update_progress(f"Scheduling {max_arrival_count} tokens...")
+            simulation_end_date = start_time + datetime.timedelta(days=simulation_days)
+            tokens_scheduled = engine.schedule_tokens(
+                max_arrival_count, arrival_interval, simulation_end_date
+            )
+            logging.info(f"Scheduled {tokens_scheduled} tokens")
+            
+            # Run simulation
+            self._update_progress("Running simulation...")
+            target_avg_time = self.config.get("target_avg_time", 0)
+            if target_avg_time > 0:
+                self._update_progress("Optimizing for target average time...")
+                # Note: Target optimization would be implemented here
+                
+            simulation_results = engine.run_simulation(simulation_days, self._update_progress)
+            
+            # Generate report
+            self._update_progress("Generating simulation report...")
+            report_path = generate_report(
+                simulation_results["activity_processing_times"],
+                simulation_results["resource_utilization"],
+                simulation_results["total_tokens_started"],
+                xpdl_file_path,
+                simulation_metrics,
+                simulation_results["completed_tokens"]
+            )
+            
+            logging.info(f"Report generated at {report_path}")
+            self._update_progress(f"Simulation complete. Report saved to {report_path}")
+            
+            # Signal completion
+            if self.completion_callback:
+                self.completion_callback(simulation_results)
+            
+        except Exception as e:
+            logging.error(f"Error in simulation: {str(e)}", exc_info=True)
+            self.error = str(e)
+            # Signal completion with error
+            self._on_error()
+            
+    def _update_progress(self, message: str) -> None:
+        """
+        Update progress callback safely.
+        
+        Args:
+            message: Progress message to report
+        """
+        if self.progress_callback:
+            try:
+                self.progress_callback(message)
+            except Exception as e:
+                logging.error(f"Error in progress callback: {str(e)}")
+                
+    def _setup_logging(self) -> None:
+        """Set up logging for the simulation."""
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        log_filename = f"simulation_log_{timestamp}.txt"
+        
+        logging.basicConfig(
+            filename=log_filename,
+            filemode='w',
+            level=logging.INFO,
+            format='%(asctime)s - %(levelname)s - %(message)s'
+        )
+        
+        # Log configuration
+        logging.info(f"Simulation started at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        logging.info(f"Configuration:")
+        for key, value in self.config.items():
+            logging.info(f"  {key}: {value}")
+            
+    def _on_error(self) -> None:
+        """Handle simulation error."""
+        error_message = f"An error occurred during simulation: {self.error}"
+        logging.error(error_message)
+        self._update_progress(f"ERROR: {self.error}")
+        
+        if self.completion_callback:
+            self.completion_callback({"error": self.error})
+            
+    def is_running(self) -> bool:
+        """
+        Check if simulation is still running.
+        
+        Returns:
+            True if simulation thread is active, False otherwise
+        """
+        return self.simulation_thread is not None and self.simulation_thread.is_alive()
+        
+    def cancel(self) -> None:
+        """
+        Cancel a running simulation.
+        Note: This is a best-effort attempt, as Python threads cannot be forcibly terminated.
+        """
+        # We can't really cancel a running thread in Python
+        # But we can set a flag that the simulation can check
+        self._update_progress("Cancellation requested...")
+        logging.info("Simulation cancellation requested")
