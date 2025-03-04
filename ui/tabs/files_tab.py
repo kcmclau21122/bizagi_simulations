@@ -42,21 +42,36 @@ class FilesTab:
         
     def setup_ui(self) -> None:
         """Set up the UI components of the tab."""
-        # Input files frame
-        file_frame = ttk.LabelFrame(self.frame, text="Input Files")
-        file_frame.pack(fill="both", expand=False, padx=10, pady=10)
+        # Create a PanedWindow for resizable sections
+        self.paned_window = ttk.PanedWindow(self.frame, orient=tk.VERTICAL)
+        self.paned_window.pack(fill="both", expand=True)
         
-        # XPDL File selection
+        # Input files frame in the top pane
+        file_container = ttk.Frame(self.paned_window)
+        self.paned_window.add(file_container, weight=1)
+        
+        file_frame = ttk.LabelFrame(file_container, text="Input Files")
+        file_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        # XPDL File selection - using a grid layout for better alignment
+        file_frame.columnconfigure(1, weight=1)  # Make entry column expandable
+        
         ttk.Label(file_frame, text="XPDL Process File:").grid(
             row=0, column=0, padx=5, pady=5, sticky="w"
         )
         self.xpdl_entry = ttk.Entry(file_frame, width=50)
         self.xpdl_entry.grid(row=0, column=1, padx=5, pady=5, sticky="we")
-        ttk.Button(
+        
+        # Add a tooltip-like system for long paths
+        self.xpdl_entry.bind("<Enter>", self._show_xpdl_path_tooltip)
+        self.xpdl_entry.bind("<Leave>", self._hide_path_tooltip)
+        
+        browse_xpdl_btn = ttk.Button(
             file_frame, 
             text="Browse...", 
             command=self.browse_xpdl
-        ).grid(row=0, column=2, padx=5, pady=5)
+        )
+        browse_xpdl_btn.grid(row=0, column=2, padx=5, pady=5)
         
         # Metrics File selection
         ttk.Label(file_frame, text="Simulation Metrics File:").grid(
@@ -64,30 +79,139 @@ class FilesTab:
         )
         self.metrics_entry = ttk.Entry(file_frame, width=50)
         self.metrics_entry.grid(row=1, column=1, padx=5, pady=5, sticky="we")
-        ttk.Button(
+        
+        # Add a tooltip-like system for long paths
+        self.metrics_entry.bind("<Enter>", self._show_metrics_path_tooltip)
+        self.metrics_entry.bind("<Leave>", self._hide_path_tooltip)
+        
+        browse_metrics_btn = ttk.Button(
             file_frame, 
             text="Browse...", 
             command=self.browse_metrics
-        ).grid(row=1, column=2, padx=5, pady=5)
+        )
+        browse_metrics_btn.grid(row=1, column=2, padx=5, pady=5)
         
-        # File info section
-        info_frame = ttk.LabelFrame(self.frame, text="File Information")
+        # Path tooltip label (initially hidden)
+        self.path_tooltip = ttk.Label(
+            file_frame, 
+            background="#FFFFCC", 
+            relief="solid", 
+            borderwidth=1,
+            font=("TkDefaultFont", 8),
+            wraplength=500
+        )
+        
+        # Add analyze button to the file frame for better visibility
+        analyze_btn = ttk.Button(
+            file_frame,
+            text="Analyze Files",
+            command=self.analyze_files,
+            style="Accent.TButton"  # Custom style for emphasis
+        )
+        analyze_btn.grid(row=2, column=0, columnspan=3, padx=5, pady=10, sticky="e")
+        
+        # Create a style for the accent button if not already defined
+        style = ttk.Style()
+        
+        # The fixed line: Check if the style exists by trying to get its current config
+        # instead of using style.map() incorrectly
+        try:
+            existing_style = style.lookup("Accent.TButton", "font")
+            if not existing_style:  # If style doesn't exist, create it
+                style.configure("Accent.TButton", font=("TkDefaultFont", 9, "bold"))
+                if style.theme_use() == "alt":
+                    style.map("Accent.TButton",
+                        background=[('active', '#4CAF50'), ('!active', '#45a049')],
+                        foreground=[('active', 'white'), ('!active', 'white')]
+                    )
+        except tk.TclError:  # Style doesn't exist
+            style.configure("Accent.TButton", font=("TkDefaultFont", 9, "bold"))
+            if style.theme_use() == "alt":
+                style.map("Accent.TButton",
+                    background=[('active', '#4CAF50'), ('!active', '#45a049')],
+                    foreground=[('active', 'white'), ('!active', 'white')]
+                )
+        
+        # File info section in the bottom pane
+        info_container = ttk.Frame(self.paned_window)
+        self.paned_window.add(info_container, weight=2)  # Give more space to the info section
+        
+        info_frame = ttk.LabelFrame(info_container, text="File Information")
         info_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
-        self.file_info_text = tk.Text(info_frame, wrap="word", height=15, width=80)
-        self.file_info_text.pack(fill="both", expand=True, padx=5, pady=5)
+        # Create a frame for the text with scrollbar
+        text_frame = ttk.Frame(info_frame)
+        text_frame.pack(fill="both", expand=True, padx=5, pady=5)
+        
+        # Add vertical scrollbar
+        scrollbar = ttk.Scrollbar(text_frame)
+        scrollbar.pack(side="right", fill="y")
+        
+        # Text area with scrollbar
+        self.file_info_text = tk.Text(
+            text_frame, 
+            wrap="word", 
+            height=15, 
+            width=80,
+            yscrollcommand=scrollbar.set
+        )
+        self.file_info_text.pack(side="left", fill="both", expand=True)
         self.file_info_text.insert("1.0", "Select files to view information about them.")
         self.file_info_text.config(state="disabled")
         
-        # Add buttons to analyze files
-        btn_frame = ttk.Frame(self.frame)
-        btn_frame.pack(fill="x", padx=10, pady=5)
+        # Configure scrollbar to scroll the text
+        scrollbar.config(command=self.file_info_text.yview)
         
-        ttk.Button(
-            btn_frame, 
-            text="Analyze Files", 
-            command=self.analyze_files
-        ).pack(side="right", padx=5)
+        # Add mousewheel support for scrolling
+        self.file_info_text.bind("<MouseWheel>", self._on_mousewheel)
+        
+        # Add horizontal scrollbar for when wrap is disabled
+        h_scrollbar = ttk.Scrollbar(text_frame, orient=tk.HORIZONTAL, command=self.file_info_text.xview)
+        self.file_info_text.config(xscrollcommand=h_scrollbar.set)
+        h_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
+        
+        # Add toggle for word wrapping
+        wrap_var = tk.BooleanVar(value=True)
+        
+        def toggle_wrap():
+            if wrap_var.get():
+                self.file_info_text.config(wrap="word")
+                h_scrollbar.pack_forget()
+            else:
+                self.file_info_text.config(wrap="none")
+                h_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
+                
+        wrap_cb = ttk.Checkbutton(
+            info_frame, 
+            text="Word Wrap", 
+            variable=wrap_var, 
+            command=toggle_wrap
+        )
+        wrap_cb.pack(side="bottom", anchor="w", padx=5, pady=2)
+    
+    def _on_mousewheel(self, event):
+        """Handle mousewheel scrolling for text widget"""
+        self.file_info_text.yview_scroll(int(-1 * (event.delta / 120)), "units")
+    
+    def _show_xpdl_path_tooltip(self, event):
+        """Show tooltip with full XPDL path on hover"""
+        path = self.xpdl_entry.get()
+        if path:
+            self.path_tooltip.config(text=path)
+            x, y, _, height = self.xpdl_entry.bbox("insert")
+            self.path_tooltip.place(x=x, y=y+height+2, relwidth=0.8)
+    
+    def _show_metrics_path_tooltip(self, event):
+        """Show tooltip with full metrics path on hover"""
+        path = self.metrics_entry.get()
+        if path:
+            self.path_tooltip.config(text=path)
+            x, y, _, height = self.metrics_entry.bbox("insert")
+            self.path_tooltip.place(x=x, y=y+height+2, relwidth=0.8)
+    
+    def _hide_path_tooltip(self, event):
+        """Hide the path tooltip"""
+        self.path_tooltip.place_forget()
         
     def update_ui_from_config(self) -> None:
         """Update UI elements from the current configuration."""
@@ -124,6 +248,10 @@ class FilesTab:
             
     def analyze_files(self) -> None:
         """Analyze the selected files and show information."""
+        # Set cursor to wait state
+        self.frame.config(cursor="wait")
+        self.parent.update()  # Update the UI to show the wait cursor
+        
         xpdl_path = self.xpdl_entry.get()
         metrics_path = self.metrics_entry.get()
         
@@ -174,3 +302,6 @@ class FilesTab:
         self.file_info_text.delete("1.0", tk.END)
         self.file_info_text.insert("1.0", info_text)
         self.file_info_text.config(state="disabled")
+        
+        # Reset cursor to normal
+        self.frame.config(cursor="")

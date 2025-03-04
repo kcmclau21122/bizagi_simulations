@@ -53,13 +53,45 @@ class CalendarTab:
         
     def setup_ui(self):
         """Set up the UI components of the tab."""
-        # Main calendar frame
-        calendar_frame = ttk.LabelFrame(self.frame, text="Work Calendar")
+        # Create a PanedWindow for resizable sections
+        self.paned_window = ttk.PanedWindow(self.frame, orient=tk.VERTICAL)
+        self.paned_window.pack(fill="both", expand=True)
+        
+        # Main calendar frame in the top pane
+        cal_settings_container = ttk.Frame(self.paned_window)
+        self.paned_window.add(cal_settings_container, weight=1)
+        
+        calendar_frame = ttk.LabelFrame(cal_settings_container, text="Work Calendar")
         calendar_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
-        # Days of the week selector
-        days_frame = ttk.LabelFrame(calendar_frame, text="Working Days")
-        days_frame.pack(fill="x", padx=10, pady=10)
+        # Create a scrollable container for days selection to handle many options
+        days_container = ttk.Frame(calendar_frame)
+        days_container.pack(fill="x", padx=10, pady=10)
+        
+        # Add horizontal scrollbar for days selection if needed
+        h_scrollbar_days = ttk.Scrollbar(days_container, orient=tk.HORIZONTAL)
+        h_scrollbar_days.pack(side="bottom", fill="x")
+        
+        # Create canvas for days selection
+        days_canvas = tk.Canvas(
+            days_container, 
+            height=100,
+            xscrollcommand=h_scrollbar_days.set
+        )
+        days_canvas.pack(fill="x", expand=True)
+        
+        # Connect scrollbar to canvas
+        h_scrollbar_days.config(command=days_canvas.xview)
+        
+        # Create a frame inside canvas for days
+        days_frame = ttk.LabelFrame(days_canvas, text="Working Days")
+        days_canvas.create_window((0, 0), window=days_frame, anchor="nw")
+        
+        # Update the scroll region when the inner frame changes size
+        days_frame.bind(
+            "<Configure>",
+            lambda e: days_canvas.configure(scrollregion=days_canvas.bbox("all"), width=e.width)
+        )
         
         day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
         day_colors = ["#f0f0f0", "#f0f0f0", "#f0f0f0", "#f0f0f0", "#f0f0f0", "#e6e6e6", "#e6e6e6"]
@@ -101,22 +133,67 @@ class CalendarTab:
         end_combo.grid(row=1, column=1, padx=5, pady=5, sticky="w")
         ttk.Label(hours_frame, text="Hours").grid(row=1, column=2, padx=5, pady=5, sticky="w")
         
-        # Calendar visualization
-        cal_frame = ttk.LabelFrame(calendar_frame, text="Calendar Visualization")
+        # Calendar visualization in the bottom pane
+        viz_container = ttk.Frame(self.paned_window)
+        self.paned_window.add(viz_container, weight=2)
+        
+        cal_frame = ttk.LabelFrame(viz_container, text="Calendar Visualization")
         cal_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
-        self.calendar_canvas = tk.Canvas(cal_frame, bg="white", height=200)
-        self.calendar_canvas.pack(fill="both", expand=True, padx=5, pady=5)
+        # Create a frame with scrollbar for the calendar canvas
+        canvas_frame = ttk.Frame(cal_frame)
+        canvas_frame.pack(fill="both", expand=True, padx=5, pady=5)
+        
+        # Add vertical scrollbar
+        v_scrollbar = ttk.Scrollbar(canvas_frame, orient=tk.VERTICAL)
+        v_scrollbar.pack(side="right", fill="y")
+        
+        # Add horizontal scrollbar
+        h_scrollbar = ttk.Scrollbar(canvas_frame, orient=tk.HORIZONTAL)
+        h_scrollbar.pack(side="bottom", fill="x")
+        
+        # Create the calendar canvas with scrollbars
+        self.calendar_canvas = tk.Canvas(
+            canvas_frame, 
+            bg="white", 
+            height=200,
+            yscrollcommand=v_scrollbar.set,
+            xscrollcommand=h_scrollbar.set
+        )
+        self.calendar_canvas.pack(fill="both", expand=True)
+        
+        # Connect scrollbars to canvas
+        v_scrollbar.config(command=self.calendar_canvas.yview)
+        h_scrollbar.config(command=self.calendar_canvas.xview)
+        
+        # Add mousewheel scrolling for vertical scrolling
+        self.calendar_canvas.bind("<MouseWheel>", self._on_mousewheel)
+        
+        # Add Shift+MouseWheel for horizontal scrolling
+        self.calendar_canvas.bind("<Shift-MouseWheel>", self._on_shift_mousewheel)
         
         # Draw initial calendar
         self.update_calendar_visualization()
         
-        # Add button to update calendar
+        # Add button to update calendar (in a separate frame at the bottom)
+        button_frame = ttk.Frame(calendar_frame)
+        button_frame.pack(fill="x", padx=10, pady=10)
+        
         ttk.Button(
-            calendar_frame, 
+            button_frame, 
             text="Update Calendar", 
             command=self.update_calendar_visualization
-        ).pack(pady=10)
+        ).pack(side="right", padx=5, pady=5)
+        
+    def _on_mousewheel(self, event):
+        """Handle mousewheel scrolling for vertical scrolling"""
+        # Scroll up/down (-1 = up, 1 = down)
+        self.calendar_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+        
+    def _on_shift_mousewheel(self, event):
+        """Handle Shift+mousewheel for horizontal scrolling"""
+        # Scroll left/right
+        self.calendar_canvas.xview_scroll(int(-1 * (event.delta / 120)), "units")
         
     def update_calendar_visualization(self):
         """Update the calendar visualization based on current settings."""
@@ -134,16 +211,22 @@ class CalendarTab:
         if height < 100:
             height = 200
         
+        # Calculate the total size needed
+        total_width = max(width, 800)
+        total_height = max(height, 300)
+        
+        # Configure scrolling region to be larger than visible area
+        canvas.config(scrollregion=(0, 0, total_width, total_height))
+        
         # Draw week grid
-        day_width = width / 7
-        working_hours = self.work_hours_end.get() - self.work_hours_start.get()
-        hour_height = height / 24
+        day_width = total_width / 7
+        hour_height = total_height / 24
         
         # Draw hours (vertical lines)
         for hour in range(25):  # 0-24 hours
             x = 50  # Left margin
             y = hour * hour_height
-            canvas.create_line(x, y, width, y, fill="#e0e0e0")
+            canvas.create_line(x, y, total_width, y, fill="#e0e0e0")
             if hour % 2 == 0:  # Label every 2 hours
                 canvas.create_text(25, y, text=f"{hour}:00", anchor="e")
         
@@ -152,7 +235,7 @@ class CalendarTab:
         for i, day in enumerate(day_names):
             # Draw day column
             x = 50 + (i * day_width)
-            canvas.create_line(x, 0, x, height, fill="#d0d0d0")
+            canvas.create_line(x, 0, x, total_height, fill="#d0d0d0")
             canvas.create_text(x + (day_width/2), 10, text=day)
             
             # Highlight working hours if it's a working day

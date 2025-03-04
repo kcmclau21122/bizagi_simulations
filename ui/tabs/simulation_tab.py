@@ -49,106 +49,268 @@ class SimulationTab:
         
     def setup_ui(self):
         """Set up the UI components of the tab."""
-        frame = ttk.LabelFrame(self.frame, text="Simulation Parameters")
-        frame.pack(fill="both", expand=True, padx=10, pady=10)
+        # Create a main container frame
+        container = ttk.Frame(self.frame)
+        container.pack(fill="both", expand=True)
+        
+        # Create a PanedWindow for the main content
+        self.paned_window = ttk.PanedWindow(container, orient=tk.VERTICAL)
+        self.paned_window.pack(fill="both", expand=True)
+        
+        # ----- Simulation Parameters Section -----
+        params_container = ttk.Frame(self.paned_window)
+        self.paned_window.add(params_container, weight=1)
+        
+        # Create scrollable frame for parameters
+        params_scroll_container = ttk.Frame(params_container)
+        params_scroll_container.pack(fill="both", expand=True, padx=10, pady=5)
+        
+        # Add a vertical scrollbar
+        params_scroll = ttk.Scrollbar(params_scroll_container)
+        params_scroll.pack(side="right", fill="y")
+        
+        # Create canvas for scrolling
+        params_canvas = tk.Canvas(
+            params_scroll_container, 
+            yscrollcommand=params_scroll.set
+        )
+        params_canvas.pack(side="left", fill="both", expand=True)
+        
+        # Configure the scrollbar
+        params_scroll.config(command=params_canvas.yview)
+        
+        # Create a frame inside the canvas
+        params_frame = ttk.Frame(params_canvas)
+        params_window = params_canvas.create_window(
+            (0, 0), 
+            window=params_frame, 
+            anchor="nw", 
+            tags="params_frame"
+        )
+        
+        # Configure the canvas to resize the inner frame when it's resized
+        def resize_params_frame(event):
+            params_canvas.itemconfig(
+                params_window,
+                width=event.width
+            )
+        params_canvas.bind("<Configure>", resize_params_frame)
+        
+        # Make sure the scroll region is updated when the frame changes size
+        def on_params_frame_configure(event):
+            params_canvas.configure(scrollregion=params_canvas.bbox("all"))
+        params_frame.bind("<Configure>", on_params_frame_configure)
+        
+        # Add mousewheel scrolling
+        def on_params_mousewheel(event):
+            params_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        params_canvas.bind_all("<MouseWheel>", on_params_mousewheel)
+        
+        # Create LabelFrame for simulation parameters
+        sim_params_frame = ttk.LabelFrame(params_frame, text="Simulation Parameters")
+        sim_params_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        # Configure the grid for better alignment
+        sim_params_frame.columnconfigure(0, weight=1)  # Label column
+        sim_params_frame.columnconfigure(1, weight=0)  # Input column
+        sim_params_frame.columnconfigure(2, weight=2)  # Help text column
         
         # Simulation days
-        ttk.Label(frame, text="Simulation Days:").grid(
-            row=0, column=0, padx=5, pady=5, sticky="w"
+        ttk.Label(sim_params_frame, text="Simulation Days:").grid(
+            row=0, column=0, padx=5, pady=10, sticky="w"
         )
-        ttk.Spinbox(
-            frame, 
+        days_spin = ttk.Spinbox(
+            sim_params_frame, 
             from_=1, 
             to=365, 
             textvariable=self.simulation_days, 
             width=10
-        ).grid(row=0, column=1, padx=5, pady=5, sticky="w")
+        )
+        days_spin.grid(row=0, column=1, padx=5, pady=10, sticky="w")
+        
+        # Help info for simulation days
+        ttk.Label(
+            sim_params_frame,
+            text="Number of calendar days to run the simulation",
+            font=("", 8, "italic"),
+            foreground="gray"
+        ).grid(row=0, column=2, padx=5, pady=10, sticky="w")
         
         # Target average time
-        ttk.Label(frame, text="Target Average Processing Time (minutes):").grid(
-            row=1, column=0, padx=5, pady=5, sticky="w"
+        ttk.Label(sim_params_frame, text="Target Average Processing Time (minutes):").grid(
+            row=1, column=0, padx=5, pady=10, sticky="w"
         )
         target_entry = ttk.Spinbox(
-            frame, 
+            sim_params_frame, 
             from_=0, 
             to=1000, 
             increment=0.1, 
             textvariable=self.target_avg_time, 
             width=10
         )
-        target_entry.grid(row=1, column=1, padx=5, pady=5, sticky="w")
+        target_entry.grid(row=1, column=1, padx=5, pady=10, sticky="w")
         ttk.Label(
-            frame, 
-            text="(0 = no target optimization)"
-        ).grid(row=1, column=2, padx=5, pady=5, sticky="w")
+            sim_params_frame, 
+            text="(0 = no target optimization)",
+            font=("", 8, "italic"),
+            foreground="gray"
+        ).grid(row=1, column=2, padx=5, pady=10, sticky="w")
         
         # Random seed
-        ttk.Label(frame, text="Random Seed:").grid(
-            row=2, column=0, padx=5, pady=5, sticky="w"
+        ttk.Label(sim_params_frame, text="Random Seed:").grid(
+            row=2, column=0, padx=5, pady=10, sticky="w"
         )
-        ttk.Spinbox(
-            frame, 
+        seed_spin = ttk.Spinbox(
+            sim_params_frame, 
             from_=0, 
             to=1000, 
             textvariable=self.random_seed, 
             width=10
-        ).grid(row=2, column=1, padx=5, pady=5, sticky="w")
+        )
+        seed_spin.grid(row=2, column=1, padx=5, pady=10, sticky="w")
         
-        # Advanced parameters frame
-        adv_frame = ttk.LabelFrame(frame, text="Advanced Parameters")
+        # Help info for random seed
+        ttk.Label(
+            sim_params_frame,
+            text="Controls randomization for reproducible results",
+            font=("", 8, "italic"),
+            foreground="gray"
+        ).grid(row=2, column=2, padx=5, pady=10, sticky="w")
+        
+        # Advanced parameters section
+        adv_frame = ttk.LabelFrame(sim_params_frame, text="Advanced Parameters")
         adv_frame.grid(row=3, column=0, columnspan=3, padx=5, pady=10, sticky="we")
+        
+        # Configure the grid for advanced parameters
+        adv_frame.columnconfigure(0, weight=0)  # Label column
+        adv_frame.columnconfigure(1, weight=1)  # Input column
+        adv_frame.columnconfigure(2, weight=2)  # Help text column
         
         # Arrival pattern
         ttk.Label(adv_frame, text="Arrival Pattern:").grid(
-            row=0, column=0, padx=5, pady=5, sticky="w"
+            row=0, column=0, padx=5, pady=8, sticky="w"
         )
-        arrival_pattern = ttk.Combobox(adv_frame, width=15)
+        arrival_pattern = ttk.Combobox(adv_frame, width=20)
         arrival_pattern['values'] = ["Fixed Interval", "Exponential", "Normal Distribution"]
         arrival_pattern.current(0)
-        arrival_pattern.grid(row=0, column=1, padx=5, pady=5, sticky="w")
+        arrival_pattern.grid(row=0, column=1, padx=5, pady=8, sticky="w")
+        
+        # Help info for arrival pattern
+        ttk.Label(
+            adv_frame,
+            text="Distribution of token arrival times",
+            font=("", 8, "italic"),
+            foreground="gray"
+        ).grid(row=0, column=2, padx=5, pady=8, sticky="w")
         
         # Resource optimization strategy
         ttk.Label(adv_frame, text="Resource Optimization:").grid(
-            row=1, column=0, padx=5, pady=5, sticky="w"
+            row=1, column=0, padx=5, pady=8, sticky="w"
         )
-        resource_opt = ttk.Combobox(adv_frame, width=15)
+        resource_opt = ttk.Combobox(adv_frame, width=20)
         resource_opt['values'] = ["Minimize Cost", "Maximize Throughput", "Balance Load"]
         resource_opt.current(0)
-        resource_opt.grid(row=1, column=1, padx=5, pady=5, sticky="w")
+        resource_opt.grid(row=1, column=1, padx=5, pady=8, sticky="w")
+        
+        # Help info for resource optimization
+        ttk.Label(
+            adv_frame,
+            text="Strategy for resource allocation",
+            font=("", 8, "italic"),
+            foreground="gray"
+        ).grid(row=1, column=2, padx=5, pady=8, sticky="w")
         
         # Load balance strategy
         ttk.Label(adv_frame, text="Load Balancing:").grid(
-            row=2, column=0, padx=5, pady=5, sticky="w"
+            row=2, column=0, padx=5, pady=8, sticky="w"
         )
-        load_balance = ttk.Combobox(adv_frame, width=15)
+        load_balance = ttk.Combobox(adv_frame, width=20)
         load_balance['values'] = ["Round Robin", "Least Utilized", "Shortest Queue"]
         load_balance.current(0)
-        load_balance.grid(row=2, column=1, padx=5, pady=5, sticky="w")
+        load_balance.grid(row=2, column=1, padx=5, pady=8, sticky="w")
+        
+        # Help info for load balancing
+        ttk.Label(
+            adv_frame,
+            text="Method for distributing work among resources",
+            font=("", 8, "italic"),
+            foreground="gray"
+        ).grid(row=2, column=2, padx=5, pady=8, sticky="w")
         
         # Add note about advanced parameters
         ttk.Label(
             adv_frame, 
             text="Note: Advanced parameters will be fully implemented in future versions.",
-            font=("", 8, "italic")
-        ).grid(row=3, column=0, columnspan=3, padx=5, pady=5, sticky="w")
+            font=("", 8, "italic"),
+            foreground="red"
+        ).grid(row=3, column=0, columnspan=3, padx=5, pady=8, sticky="w")
         
-        # Simulation Description Frame
-        desc_frame = ttk.LabelFrame(self.frame, text="Simulation Information")
+        # ----- Simulation Description Section -----
+        desc_container = ttk.Frame(self.paned_window)
+        self.paned_window.add(desc_container, weight=1)
+        
+        desc_frame = ttk.LabelFrame(desc_container, text="Simulation Information")
         desc_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
-        info_text = tk.Text(desc_frame, wrap="word", height=8)
-        info_text.pack(fill="both", expand=True, padx=5, pady=5)
+        # Create a text widget with scrollbar
+        text_frame = ttk.Frame(desc_frame)
+        text_frame.pack(fill="both", expand=True, padx=5, pady=5)
         
-        info_text.insert("1.0", """The simulation will process tokens through the model based on the specified parameters:
+        text_scrollbar = ttk.Scrollbar(text_frame)
+        text_scrollbar.pack(side="right", fill="y")
+        
+        self.info_text = tk.Text(
+            text_frame, 
+            wrap="word", 
+            height=8, 
+            yscrollcommand=text_scrollbar.set,
+            background="#f8f8f8"  # Light gray background for text area
+        )
+        self.info_text.pack(side="left", fill="both", expand=True)
+        
+        text_scrollbar.config(command=self.info_text.yview)
+        
+        # Add mousewheel scrolling for text widget
+        def on_text_mousewheel(event):
+            self.info_text.yview_scroll(int(-1*(event.delta/120)), "units")
+        self.info_text.bind("<MouseWheel>", on_text_mousewheel)
+        
+        # Information text with formatted content
+        info_content = """The simulation will process tokens through the model based on the specified parameters:
 
 • Simulation Days: The number of calendar days to simulate.
 • Target Average Time: If specified, the simulator will attempt to optimize resource allocation to meet this target.
 • Random Seed: Controls randomization for reproducible results.
 
-The simulator respects the work calendar settings and will only process tasks during defined work hours.""")
+The simulator respects the work calendar settings and will only process tasks during defined work hours.
+
+Advanced parameters allow fine-tuning of the simulation behavior:
+• Arrival Pattern: Controls how new tokens are created over time
+• Resource Optimization: Determines how resources are allocated to activities
+• Load Balancing: Controls how work is distributed among available resources"""
+
+        self.info_text.insert("1.0", info_content)
         
-        info_text.config(state="disabled")
-    
+        # Apply some basic styling to the text
+        self.info_text.tag_configure("heading", font=("TkDefaultFont", 10, "bold"))
+        self.info_text.tag_configure("bullet", foreground="blue")
+        
+        # Find and tag bullet points
+        start_index = "1.0"
+        while True:
+            bullet_pos = self.info_text.search("•", start_index, tk.END)
+            if not bullet_pos:
+                break
+            
+            line_end = self.info_text.search("\n", bullet_pos, tk.END)
+            if not line_end:
+                line_end = tk.END
+                
+            self.info_text.tag_add("bullet", bullet_pos, f"{bullet_pos}+1c")
+            start_index = line_end
+        
+        self.info_text.config(state="disabled")
+        
     def update_config(self):
         """Update configuration from UI elements."""
         self.config.set("simulation_days", self.simulation_days.get())

@@ -16,6 +16,71 @@ from typing import Dict, Any, List, Optional
 from utils.config import ConfigManager
 from utils.time_utils import format_duration_for_display
 
+class ScrollableFrame(ttk.Frame):
+    """
+    A base frame that provides scrolling capabilities.
+    """
+    
+    def __init__(self, parent, **kwargs):
+        """
+        Initialize the scrollable frame.
+        
+        Args:
+            parent: Parent widget
+            **kwargs: Additional keyword arguments for Frame
+        """
+        super().__init__(parent, **kwargs)
+        
+        # Create a canvas for scrolling
+        self.canvas = tk.Canvas(self)
+        self.scrollbar = ttk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
+        
+        # Create the scrollable frame
+        self.scrollable_frame = ttk.Frame(self.canvas)
+        
+        # Configure scrolling
+        self.scrollable_frame.bind(
+            "<Configure>",
+            lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+        )
+        
+        # Create window inside canvas
+        self.canvas_window = self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+        
+        # Configure canvas to expand with the frame
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+        
+        # Pack widgets
+        self.canvas.pack(side="left", fill="both", expand=True)
+        self.scrollbar.pack(side="right", fill="y")
+        
+        # Configure canvas to expand with window
+        self.bind("<Configure>", self._on_frame_configure)
+        
+        # Mouse wheel scrolling
+        self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+        
+    def _on_frame_configure(self, event=None):
+        """Handle frame resize event."""
+        # Update the canvas width to match the frame
+        self.canvas.configure(width=self.winfo_width())
+        
+        # Ensure the inner frame expands to fill the canvas width
+        self.canvas.itemconfig(self.canvas_window, width=self.canvas.winfo_width())
+    
+    def _on_mousewheel(self, event):
+        """Handle mouse wheel scrolling."""
+        # The event.delta value is negative when scrolling down, positive when scrolling up
+        self.canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        
+    def unbind_mousewheel(self):
+        """Unbind the mousewheel event when the frame loses focus."""
+        self.canvas.unbind_all("<MouseWheel>")
+        
+    def rebind_mousewheel(self):
+        """Rebind the mousewheel event when the frame gains focus."""
+        self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+
 class ResultsTab:
     """
     Tab for displaying simulation results.
@@ -44,8 +109,16 @@ class ResultsTab:
         
     def setup_ui(self):
         """Set up the UI components of the tab."""
+        # Create a PanedWindow for resizable sections
+        self.paned_window = ttk.PanedWindow(self.frame, orient=tk.VERTICAL)
+        self.paned_window.pack(fill="both", expand=True)
+        
         # Create a frame for the results text area with scrollbar
-        text_frame = ttk.Frame(self.frame)
+        text_container = ttk.Frame(self.paned_window)
+        self.paned_window.add(text_container, weight=1)
+        
+        # Add a LabelFrame for clarity
+        text_frame = ttk.LabelFrame(text_container, text="Simulation Results Summary")
         text_frame.pack(fill="both", expand=True, padx=5, pady=5)
         
         # Add vertical scrollbar
@@ -53,16 +126,20 @@ class ResultsTab:
         scrollbar.pack(side="right", fill="y")
         
         # Results text area with scrollbar
-        self.results_text = tk.Text(text_frame, wrap="word", height=15, width=80, yscrollcommand=scrollbar.set)
-        self.results_text.pack(side="left", fill="both", expand=True)
+        self.results_text = tk.Text(text_frame, wrap="word", height=10, width=80, yscrollcommand=scrollbar.set)
+        self.results_text.pack(side="left", fill="both", expand=True, padx=5, pady=5)
         self.results_text.insert("1.0", "Simulation results will appear here after running a simulation.")
         self.results_text.config(state="disabled")
         
         # Configure scrollbar to scroll the text
         scrollbar.config(command=self.results_text.yview)
         
+        # Create a container for the visualization notebook
+        vis_container = ttk.Frame(self.paned_window)
+        self.paned_window.add(vis_container, weight=2)
+        
         # Create notebook for results visualization
-        self.vis_notebook = ttk.Notebook(self.frame)
+        self.vis_notebook = ttk.Notebook(vis_container)
         self.vis_notebook.pack(fill="both", expand=True, padx=5, pady=5)
         
         # Create tabs for different result visualizations
@@ -105,60 +182,23 @@ class ResultsTab:
             text="View Full Report",
             command=self.view_full_report
         ).pack(side="right", padx=5)
+    
+    def _create_scrollable_frame(self, parent):
+        """
+        Create a scrollable frame.
         
-
-    def setup_ui(self):
-        """Set up the UI components of the tab."""
-        # Results text area
-        self.results_text = tk.Text(self.frame, wrap="word", height=15, width=80)
-        self.results_text.pack(fill="both", expand=True, padx=5, pady=5)
-        self.results_text.insert("1.0", "Simulation results will appear here after running a simulation.")
-        self.results_text.config(state="disabled")
-        
-        # Create notebook for results visualization
-        self.vis_notebook = ttk.Notebook(self.frame)
-        self.vis_notebook.pack(fill="both", expand=True, padx=5, pady=5)
-        
-        # Create tabs for different result visualizations
-        self.overview_frame = ttk.Frame(self.vis_notebook)
-        self.resources_frame = ttk.Frame(self.vis_notebook)
-        self.activities_frame = ttk.Frame(self.vis_notebook)
-        self.paths_frame = ttk.Frame(self.vis_notebook)
-        
-        self.vis_notebook.add(self.overview_frame, text="Overview")
-        self.vis_notebook.add(self.resources_frame, text="Resources")
-        self.vis_notebook.add(self.activities_frame, text="Activities")
-        self.vis_notebook.add(self.paths_frame, text="Process Paths")
-        
-        # Add placeholder text for each tab
-        for frame in [self.overview_frame, self.resources_frame, 
-                    self.activities_frame, self.paths_frame]:
-            ttk.Label(
-                frame, 
-                text="Charts will appear here after running a simulation."
-            ).pack(padx=20, pady=40)
+        Args:
+            parent: Parent widget
             
-        # Add export buttons
-        btn_frame = ttk.Frame(self.frame)
-        btn_frame.pack(fill="x", padx=10, pady=5)
+        Returns:
+            Tuple containing the container frame and the inner frame for content
+        """
+        # Create a scrollable frame container
+        scrollable_container = ScrollableFrame(parent)
+        scrollable_container.pack(fill="both", expand=True, padx=5, pady=5)
         
-        ttk.Button(
-            btn_frame,
-            text="Export Results",
-            command=self.export_results
-        ).pack(side="left", padx=5)
-        
-        ttk.Button(
-            btn_frame,
-            text="Export Charts",
-            command=self.export_charts
-        ).pack(side="left", padx=5)
-        
-        ttk.Button(
-            btn_frame,
-            text="View Full Report",
-            command=self.view_full_report
-        ).pack(side="right", padx=5)
+        # Return the container and its scrollable inner frame
+        return scrollable_container, scrollable_container.scrollable_frame
     
     def update_results(self, results: Dict[str, Any]) -> None:
         """
@@ -284,11 +324,14 @@ class ResultsTab:
             ).pack(padx=20, pady=40)
             return
         
+        # Create a scrollable frame for the overview content
+        overview_container, scrollable_frame = self._create_scrollable_frame(self.overview_frame)
+        
         # Create a grid layout for overview charts
         for i in range(2):
-            self.overview_frame.columnconfigure(i, weight=1)
+            scrollable_frame.columnconfigure(i, weight=1)
         for i in range(2):
-            self.overview_frame.rowconfigure(i, weight=1)
+            scrollable_frame.rowconfigure(i, weight=1)
         
         # Create process duration histogram (top left)
         fig1, ax1 = plt.subplots(figsize=(5, 3))
@@ -322,7 +365,7 @@ class ResultsTab:
         )
         
         # Create a frame for the histogram
-        chart_frame1 = ttk.Frame(self.overview_frame)
+        chart_frame1 = ttk.Frame(scrollable_frame)
         chart_frame1.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
         
         # Add the figure to the frame
@@ -347,7 +390,7 @@ class ResultsTab:
         ax2.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle
         
         # Create a frame for the donut chart
-        chart_frame2 = ttk.Frame(self.overview_frame)
+        chart_frame2 = ttk.Frame(scrollable_frame)
         chart_frame2.grid(row=0, column=1, padx=5, pady=5, sticky="nsew")
         
         # Add the figure to the frame
@@ -378,7 +421,7 @@ class ResultsTab:
             )
         
         # Create a frame for the scatter plot
-        chart_frame3 = ttk.Frame(self.overview_frame)
+        chart_frame3 = ttk.Frame(scrollable_frame)
         chart_frame3.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
         
         # Add the figure to the frame
@@ -387,7 +430,7 @@ class ResultsTab:
         canvas3.get_tk_widget().pack(fill=tk.BOTH, expand=True)
         
         # Create summary statistics (bottom right)
-        stats_frame = ttk.LabelFrame(self.overview_frame, text="Process Statistics")
+        stats_frame = ttk.LabelFrame(scrollable_frame, text="Process Statistics")
         stats_frame.grid(row=1, column=1, padx=5, pady=5, sticky="nsew")
         
         avg_duration = sum(process_durations) / len(process_durations)
@@ -428,8 +471,11 @@ class ResultsTab:
             ).pack(padx=20, pady=40)
             return
         
+        # Create a scrollable frame for the resources content
+        resource_container, scrollable_frame = self._create_scrollable_frame(self.resources_frame)
+        
         # Create a frame for the utilization chart
-        chart_frame = ttk.Frame(self.resources_frame)
+        chart_frame = ttk.Frame(scrollable_frame)
         chart_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
         # Sort resources by utilization for better visualization
@@ -471,7 +517,7 @@ class ResultsTab:
         
         # Add resource utilization interpretation
         interp_frame = ttk.LabelFrame(
-            self.resources_frame, 
+            scrollable_frame, 
             text="Resource Utilization Interpretation"
         )
         interp_frame.pack(fill="x", padx=10, pady=10)
@@ -545,8 +591,11 @@ class ResultsTab:
             ).pack(padx=20, pady=40)
             return
         
+        # Create a scrollable frame for the activities content
+        activities_container, scrollable_frame = self._create_scrollable_frame(self.activities_frame)
+        
         # Create a frame for activity completion rates
-        frame1 = ttk.LabelFrame(self.activities_frame, text="Activity Completion Rates")
+        frame1 = ttk.LabelFrame(scrollable_frame, text="Activity Completion Rates")
         frame1.pack(fill="both", expand=True, padx=10, pady=5)
         
         # Prepare data for completion rate chart
@@ -592,7 +641,7 @@ class ResultsTab:
         canvas1.get_tk_widget().pack(fill=tk.BOTH, expand=True)
         
         # Create a frame for activity times
-        frame2 = ttk.LabelFrame(self.activities_frame, text="Activity Processing Times")
+        frame2 = ttk.LabelFrame(scrollable_frame, text="Activity Processing Times")
         frame2.pack(fill="both", expand=True, padx=10, pady=5)
         
         # Prepare data for time chart
@@ -680,12 +729,15 @@ class ResultsTab:
             ).pack(padx=20, pady=40)
             return
         
+        # Create a scrollable frame for the paths content
+        paths_container, scrollable_frame = self._create_scrollable_frame(self.paths_frame)
+        
         # Extract paths from completed tokens
         paths = [tuple(token.get('path', [])) for token in completed_tokens if 'path' in token]
         
         if not paths:
             ttk.Label(
-                self.paths_frame, 
+                scrollable_frame, 
                 text="No path data available in tokens."
             ).pack(padx=20, pady=40)
             return
@@ -697,7 +749,7 @@ class ResultsTab:
             path_counts[path_str] = path_counts.get(path_str, 0) + 1
         
         # Create a frame for path frequencies
-        frame = ttk.Frame(self.paths_frame)
+        frame = ttk.Frame(scrollable_frame)
         frame.pack(fill="both", expand=True, padx=10, pady=10)
         
         # Sort paths by frequency
@@ -737,7 +789,7 @@ class ResultsTab:
         canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
         
         # Add path analysis text
-        analysis_frame = ttk.LabelFrame(self.paths_frame, text="Path Analysis")
+        analysis_frame = ttk.LabelFrame(scrollable_frame, text="Path Analysis")
         analysis_frame.pack(fill="x", padx=10, pady=10)
         
         # Calculate some statistics
@@ -835,11 +887,14 @@ class ResultsTab:
                 self.paths_frame
             ]):
                 for widget in frame.winfo_children():
-                    if isinstance(widget, FigureCanvasTkAgg):
-                        fig = widget.figure
-                        file_name = f"chart_{i}_{id(widget)}.png"
-                        file_path = os.path.join(dir_path, file_name)
-                        fig.savefig(file_path, dpi=300, bbox_inches='tight')
+                    if isinstance(widget, ScrollableFrame):
+                        for child in widget.scrollable_frame.winfo_children():
+                            for grandchild in child.winfo_children():
+                                if isinstance(grandchild, FigureCanvasTkAgg):
+                                    fig = grandchild.figure
+                                    file_name = f"chart_{i}_{id(grandchild)}.png"
+                                    file_path = os.path.join(dir_path, file_name)
+                                    fig.savefig(file_path, dpi=300, bbox_inches='tight')
             
             tk.messagebox.showinfo(
                 "Export Charts", 
