@@ -1,4 +1,9 @@
 import os
+import sys
+
+# Add project root to sys.path 
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import threading
 import logging
 import random
@@ -6,13 +11,16 @@ import datetime
 import pandas as pd
 from typing import Callable, Dict, Any, Optional
 
-from ..utils.config import ConfigManager
-from ..data.xpdl_parser import parse_xpdl_to_sequences
-from ..data.process_builder import ProcessModelBuilder
-from ..data.visualizations import diagram_process
-from .process_model import ProcessModel
-from .simulation_engine import SimulationEngine
-from ..reporting.report_generator import generate_report
+# Use absolute imports for local modules
+from core.process_model import ProcessModel
+from core.simulation_engine import SimulationEngine
+
+# Use absolute imports for other modules
+from utils.config import ConfigManager
+from data.xpdl_parser import parse_xpdl_to_sequences
+from data.process_builder import ProcessModelBuilder
+from data.visualizations import diagram_process
+from reporting.report_generator import generate_report
 
 class SimulationRunner:
     """
@@ -207,3 +215,20 @@ class SimulationRunner:
         # But we can set a flag that the simulation can check
         self._update_progress("Cancellation requested...")
         logging.info("Simulation cancellation requested")
+        
+def main():
+    """Main function to run a simulation."""
+    # Create a simple main function if you need one
+    config = ConfigManager()  # Initialize with default values or load from a file
+    runner = SimulationRunner(config)
+    runner.run()
+    
+    # Wait for simulation to complete
+    import time
+    while runner.is_running():
+        time.sleep(1)
+    
+    print("Simulation completed")
+
+if __name__ == "__main__":
+    main()

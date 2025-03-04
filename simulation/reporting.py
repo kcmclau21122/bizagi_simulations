@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 from tabulate import tabulate
+import numpy as np
 
 def save_simulation_report(activity_processing_times, resource_utilization, total_tokens_started, xpdl_file_path, transitions_df, completed_tokens):
     """

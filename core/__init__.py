@@ -1,8 +1,10 @@
+# Step 2: Update __init__.py to import from process_token instead of token
+# core/__init__.py
 """
 Core simulation components and domain models.
 """
 
-from .token import Token
+from .process_token import Token
 from .event import Event
 from .process_model import ProcessModel
 from .resource import ResourceManager

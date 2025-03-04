@@ -15,8 +15,8 @@ from datetime import datetime
 # Ensure the parent package is in the path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from .main_window import MainWindow
-from ..utils.config import ConfigManager
+from main_window import MainWindow
+from utils.config import ConfigManager
 
 def setup_logging():
     """Set up logging for the application."""

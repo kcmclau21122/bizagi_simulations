@@ -4,8 +4,74 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 import numpy as np
 from typing import List, Dict, Any, Optional, Tuple, Union
+from scipy import stats
 
-class ChartFrame(ttk.Frame):
+class ScrollableFrame(ttk.Frame):
+    """
+    A base frame that provides scrolling capabilities.
+    """
+    
+    def __init__(self, parent, **kwargs):
+        """
+        Initialize the scrollable frame.
+        
+        Args:
+            parent: Parent widget
+            **kwargs: Additional keyword arguments for Frame
+        """
+        super().__init__(parent, **kwargs)
+        
+        # Create a canvas for scrolling
+        self.canvas = tk.Canvas(self)
+        self.scrollbar = ttk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
+        
+        # Create the scrollable frame
+        self.scrollable_frame = ttk.Frame(self.canvas)
+        
+        # Configure scrolling
+        self.scrollable_frame.bind(
+            "<Configure>",
+            lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+        )
+        
+        # Create window inside canvas
+        self.canvas_window = self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+        
+        # Configure canvas to expand with the frame
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+        
+        # Pack widgets
+        self.canvas.pack(side="left", fill="both", expand=True)
+        self.scrollbar.pack(side="right", fill="y")
+        
+        # Configure canvas to expand with window
+        self.bind("<Configure>", self._on_frame_configure)
+        
+        # Mouse wheel scrolling
+        self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+        
+    def _on_frame_configure(self, event=None):
+        """Handle frame resize event."""
+        # Update the canvas width to match the frame
+        self.canvas.configure(width=self.winfo_width())
+        
+        # Ensure the inner frame expands to fill the canvas width
+        self.canvas.itemconfig(self.canvas_window, width=self.canvas.winfo_width())
+    
+    def _on_mousewheel(self, event):
+        """Handle mouse wheel scrolling."""
+        # The event.delta value is negative when scrolling down, positive when scrolling up
+        self.canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        
+    def unbind_mousewheel(self):
+        """Unbind the mousewheel event when the frame loses focus."""
+        self.canvas.unbind_all("<MouseWheel>")
+        
+    def rebind_mousewheel(self):
+        """Rebind the mousewheel event when the frame gains focus."""
+        self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+
+class ChartFrame(ScrollableFrame):
     """
     Base class for chart frames that embed matplotlib figures in tkinter.
     """
@@ -25,26 +91,35 @@ class ChartFrame(ttk.Frame):
         
         # Create figure and canvas
         self.figure, self.ax = plt.subplots(figsize=figsize)
-        self.canvas = FigureCanvasTkAgg(self.figure, master=self)
-        self.canvas.draw()
+        self.matplotlib_canvas = FigureCanvasTkAgg(self.figure, master=self.scrollable_frame)
+        self.matplotlib_canvas.draw()
         
         # Set up layout
-        self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+        self.matplotlib_canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
         
         # Add toolbar if requested
         if with_toolbar:
-            self.toolbar = NavigationToolbar2Tk(self.canvas, self)
+            self.toolbar = NavigationToolbar2Tk(self.matplotlib_canvas, self.scrollable_frame)
             self.toolbar.update()
             self.toolbar.pack(fill=tk.X)
+            
+        # Configure canvas and frame to handle resizing properly
+        self.matplotlib_canvas.get_tk_widget().bind("<Configure>", self._on_canvas_resize)
+            
+    def _on_canvas_resize(self, event):
+        """Handle matplotlib canvas resize events."""
+        # Update the figure layout when the canvas is resized
+        self.figure.tight_layout()
+        self.matplotlib_canvas.draw()
             
     def clear(self) -> None:
         """Clear the chart."""
         self.ax.clear()
-        self.canvas.draw()
+        self.matplotlib_canvas.draw()
         
     def update(self) -> None:
         """Update the canvas drawing."""
-        self.canvas.draw()
+        self.matplotlib_canvas.draw()
         
     def save_figure(self, path: str, dpi: int = 300) -> None:
         """
@@ -651,3 +726,4 @@ class BoxPlotFrame(ChartFrame):
                 bbox=dict(facecolor='white', alpha=0.8),
                 verticalalignment='center'
             )
+            

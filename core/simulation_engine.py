@@ -1,3 +1,8 @@
+import sys
+import os
+# Add project root to sys.path 
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import heapq
 import logging
 import random
@@ -5,11 +10,11 @@ from datetime import datetime, timedelta
 from collections import defaultdict
 from typing import Dict, List, Tuple, Optional, Any, Callable
 
-from .event import Event
-from .token import Token
-from .resource import ResourceManager
-from .process_model import ProcessModel
-from ..utils.time_utils import is_work_time, advance_to_work_time
+from core.event import Event
+from core.process_token import Token
+from core.resource import ResourceManager
+from core.process_model import ProcessModel
+from utils.time_utils import is_work_time, advance_to_work_time
 
 class SimulationEngine:
     """

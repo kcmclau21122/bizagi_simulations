@@ -3,6 +3,7 @@ class Event:
         self.time = time
         self.token_id = token_id
         self.task_name = task_name
+        self.node_id = task_name  # Add this line to create an alias
         self.event_type = event_type
 
     def __lt__(self, other):

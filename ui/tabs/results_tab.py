@@ -1,13 +1,20 @@
+import sys
+import os
+
+# Add project root to sys.path 
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import tkinter as tk
 from tkinter import ttk, filedialog
+import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import os
 import pandas as pd
 from typing import Dict, Any, List, Optional
 
-from ...utils.config import ConfigManager
-from ...utils.time_utils import format_duration_for_display
+from utils.config import ConfigManager
+from utils.time_utils import format_duration_for_display
 
 class ResultsTab:
     """
@@ -35,6 +42,71 @@ class ResultsTab:
         # Store latest results
         self.latest_results = None
         
+    def setup_ui(self):
+        """Set up the UI components of the tab."""
+        # Create a frame for the results text area with scrollbar
+        text_frame = ttk.Frame(self.frame)
+        text_frame.pack(fill="both", expand=True, padx=5, pady=5)
+        
+        # Add vertical scrollbar
+        scrollbar = ttk.Scrollbar(text_frame)
+        scrollbar.pack(side="right", fill="y")
+        
+        # Results text area with scrollbar
+        self.results_text = tk.Text(text_frame, wrap="word", height=15, width=80, yscrollcommand=scrollbar.set)
+        self.results_text.pack(side="left", fill="both", expand=True)
+        self.results_text.insert("1.0", "Simulation results will appear here after running a simulation.")
+        self.results_text.config(state="disabled")
+        
+        # Configure scrollbar to scroll the text
+        scrollbar.config(command=self.results_text.yview)
+        
+        # Create notebook for results visualization
+        self.vis_notebook = ttk.Notebook(self.frame)
+        self.vis_notebook.pack(fill="both", expand=True, padx=5, pady=5)
+        
+        # Create tabs for different result visualizations
+        self.overview_frame = ttk.Frame(self.vis_notebook)
+        self.resources_frame = ttk.Frame(self.vis_notebook)
+        self.activities_frame = ttk.Frame(self.vis_notebook)
+        self.paths_frame = ttk.Frame(self.vis_notebook)
+        
+        self.vis_notebook.add(self.overview_frame, text="Overview")
+        self.vis_notebook.add(self.resources_frame, text="Resources")
+        self.vis_notebook.add(self.activities_frame, text="Activities")
+        self.vis_notebook.add(self.paths_frame, text="Process Paths")
+        
+        # Add placeholder text for each tab
+        for frame in [self.overview_frame, self.resources_frame, 
+                    self.activities_frame, self.paths_frame]:
+            ttk.Label(
+                frame, 
+                text="Charts will appear here after running a simulation."
+            ).pack(padx=20, pady=40)
+            
+        # Add export buttons
+        btn_frame = ttk.Frame(self.frame)
+        btn_frame.pack(fill="x", padx=10, pady=5)
+        
+        ttk.Button(
+            btn_frame,
+            text="Export Results",
+            command=self.export_results
+        ).pack(side="left", padx=5)
+        
+        ttk.Button(
+            btn_frame,
+            text="Export Charts",
+            command=self.export_charts
+        ).pack(side="left", padx=5)
+        
+        ttk.Button(
+            btn_frame,
+            text="View Full Report",
+            command=self.view_full_report
+        ).pack(side="right", padx=5)
+        
+
     def setup_ui(self):
         """Set up the UI components of the tab."""
         # Results text area
@@ -296,8 +368,8 @@ class ResultsTab:
         
         # Add a trend line
         if len(process_durations) > 1:
-            coeffs = tuple = plt.polyfit(process_durations, wait_times, 1)
-            trend_line = plt.poly1d(coeffs)
+            coeffs = np.polyfit(process_durations, wait_times, 1)
+            trend_line = np.poly1d(coeffs)
             ax3.plot(
                 process_durations, 
                 trend_line(process_durations), 

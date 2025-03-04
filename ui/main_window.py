@@ -1,15 +1,19 @@
+import sys
+import os
+
+# Add project root to sys.path 
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import tkinter as tk
 from tkinter import ttk, messagebox
-import os
 import logging
 from typing import Dict, Any, Optional, List
-
-from ..utils.config import ConfigManager
-from ..core.simulation_runner import SimulationRunner
-from .tabs.files_tab import FilesTab
-from .tabs.calendar_tab import CalendarTab
-from .tabs.simulation_tab import SimulationTab
-from .tabs.results_tab import ResultsTab
+from utils.config import ConfigManager
+from core.simulation_runner import SimulationRunner
+from ui.tabs.files_tab import FilesTab
+from ui.tabs.calendar_tab import CalendarTab
+from ui.tabs.simulation_tab import SimulationTab
+from ui.tabs.results_tab import ResultsTab
 
 class MainWindow:
     """
@@ -33,8 +37,20 @@ class MainWindow:
         self.root.title("Bizagi Process Simulator")
         self.root.geometry("900x700")
         
+        # Create main frame that will contain everything
+        self.main_frame = ttk.Frame(self.root)
+        self.main_frame.pack(fill="both", expand=True)
+        
+        # Create a vertical paned window for main content
+        self.main_paned = ttk.PanedWindow(self.main_frame, orient=tk.VERTICAL)
+        self.main_paned.pack(fill="both", expand=True)
+        
+        # Create a frame for tabs that will go in the top pane
+        self.tabs_frame = ttk.Frame(self.main_paned)
+        self.main_paned.add(self.tabs_frame, weight=1)
+        
         # Set up tabs
-        self.tab_control = ttk.Notebook(self.root)
+        self.tab_control = ttk.Notebook(self.tabs_frame)
         self.tab_control.pack(expand=1, fill="both")
         
         # Create tabs
@@ -49,16 +65,9 @@ class MainWindow:
         self.tab_control.add(self.simulation_tab.frame, text='Simulation')
         self.tab_control.add(self.results_tab.frame, text='Results')
         
-        # Add control buttons frame
-        self.create_control_buttons()
-        
-        # Set protocol for closing window
-        self.root.protocol("WM_DELETE_WINDOW", self.on_close)
-        
-    def create_control_buttons(self) -> None:
-        """Create global control buttons at the bottom of the window."""
-        self.btn_frame = ttk.Frame(self.root)
-        self.btn_frame.pack(fill="x", padx=10, pady=10)
+        # Add control buttons frame - place at bottom of window
+        self.btn_frame = ttk.Frame(self.main_frame)
+        self.btn_frame.pack(fill="x", side="bottom", padx=10, pady=10)
         
         # Save settings button
         ttk.Button(
@@ -75,6 +84,14 @@ class MainWindow:
         )
         self.run_button.pack(side="right", padx=10, pady=5)
         
+        # Set protocol for closing window
+        self.root.protocol("WM_DELETE_WINDOW", self.on_close)
+        
+    def create_control_buttons(self) -> None:
+        """Create global control buttons at the bottom of the window."""
+        # Button frame is now created in __init__
+        pass
+            
     def save_settings(self) -> None:
         """Save current settings to the configuration file."""
         # Update config from all tabs
@@ -225,6 +242,9 @@ class MainWindow:
         
         # Switch to results tab
         self.tab_control.select(3)  # Index of results tab
+        
+        # Ensure buttons remain visible
+        self.root.update_idletasks()
         
         # Show success message
         messagebox.showinfo(

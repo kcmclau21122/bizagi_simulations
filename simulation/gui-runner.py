@@ -51,7 +51,7 @@ class BizagiSimulatorGUI:
         
         # Create tabs
         self.tab_files = ttk.Frame(self.tab_control)
-        self.tab_calendar = ttk.Frame(selgit add b_control)
+        self.tab_calendar = ttk.Frame(self.tab_control)
         self.tab_simulation = ttk.Frame(self.tab_control)
         self.tab_results = ttk.Frame(self.tab_control)
         
