@@ -133,9 +133,9 @@ class SimulationRunner:
                 
             simulation_results = engine.run_simulation(simulation_days, self._update_progress)
             
-            # Generate report
+            # Generate report - MODIFIED to capture visualization paths
             self._update_progress("Generating simulation report...")
-            report_path = generate_report(
+            report_path, visualization_paths = generate_report(
                 simulation_results["activity_processing_times"],
                 simulation_results["resource_utilization"],
                 simulation_results["total_tokens_started"],
@@ -144,7 +144,11 @@ class SimulationRunner:
                 simulation_results["completed_tokens"]
             )
             
+            # Add visualization paths to results - NEW
+            simulation_results["visualization_paths"] = visualization_paths
+            
             logging.info(f"Report generated at {report_path}")
+            logging.info(f"Visualization paths: {visualization_paths}")  # Added for debugging
             self._update_progress(f"Simulation complete. Report saved to {report_path}")
             
             # Signal completion

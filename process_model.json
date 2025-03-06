@@ -48,14 +48,14 @@
             "id": "Work with REO RPO to Correct (5.5.13.3)"
         },
         {
-            "type": "Activity Step",
-            "gateway": null,
+            "type": "[Inclusive Gateway]",
+            "gateway": "[Inclusive Gateway]",
             "yes": 0.6,
             "no": 0.4,
             "id": "Create Journal Entries?"
         },
         {
-            "type": "CONDITION-Yes",
+            "type": "CONDITION-Post",
             "gateway": "[Exclusive Gateway]",
             "resource": "Certifier",
             "available resources": 1.0,
@@ -63,6 +63,14 @@
             "min time": 5.0,
             "max time": 15.0,
             "id": "Create/Post Journal Entries (5.5.13.4)"
+        },
+        {
+            "type": "CONDITION-Path 3",
+            "gateway": "[Exclusive Gateway]",
+            "avg time": 1.0,
+            "min time": 0.5,
+            "max time": 1.5,
+            "id": "Inclusive Path 3"
         },
         {
             "type": "Stop",
@@ -102,18 +110,28 @@
             "target": "Create Journal Entries?"
         },
         {
-            "type": "CONDITION-Yes",
+            "type": "CONDITION-Post",
             "source": "Create Journal Entries?",
             "target": "Create/Post Journal Entries (5.5.13.4)"
         },
         {
-            "type": "CONDITION-No",
+            "type": "CONDITION-Note Accuracy",
             "source": "Create Journal Entries?",
             "target": "Note Accuracy in Asset Change Tracker (5.5.13.2)"
         },
         {
+            "type": "CONDITION-Path 3",
+            "source": "Create Journal Entries?",
+            "target": "Inclusive Path 3"
+        },
+        {
             "type": "Stop",
             "source": "Create/Post Journal Entries (5.5.13.4)",
+            "target": "Unknown"
+        },
+        {
+            "type": "Stop",
+            "source": "Inclusive Path 3",
             "target": "Unknown"
         }
     ]

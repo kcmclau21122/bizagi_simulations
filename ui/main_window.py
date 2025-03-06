@@ -13,7 +13,8 @@ from core.simulation_runner import SimulationRunner
 from ui.tabs.files_tab import FilesTab
 from ui.tabs.calendar_tab import CalendarTab
 from ui.tabs.simulation_tab import SimulationTab
-from ui.tabs.results_tab import ResultsTab
+from ui.tabs.enhanced_results_tab import EnhancedResultsTab
+
 
 class MainWindow:
     """
@@ -57,7 +58,7 @@ class MainWindow:
         self.files_tab = FilesTab(self.tab_control, self.config)
         self.calendar_tab = CalendarTab(self.tab_control, self.config)
         self.simulation_tab = SimulationTab(self.tab_control, self.config)
-        self.results_tab = ResultsTab(self.tab_control, self.config)
+        self.results_tab = EnhancedResultsTab(self.tab_control, self.config)
         
         # Add tabs to notebook
         self.tab_control.add(self.files_tab.frame, text='Files')

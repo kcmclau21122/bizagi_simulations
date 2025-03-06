@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from typing import Dict, Any, List, Tuple
 
-from ui_components import ScrollableFrame
+from .ui_components import ScrollableFrame
 
 class BaseChartCreator:
     """Base class for all chart creators."""

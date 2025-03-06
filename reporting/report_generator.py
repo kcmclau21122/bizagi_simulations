@@ -3,7 +3,7 @@ import logging
 import pandas as pd
 import numpy as np
 from datetime import datetime
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Tuple
 
 from .visualizations import (
     generate_resource_chart,
@@ -17,7 +17,7 @@ def generate_report(activity_processing_times: Dict[str, Dict[str, Any]],
                    total_tokens_started: int,
                    xpdl_file_path: str,
                    transitions_df: pd.DataFrame,
-                   completed_tokens: List[Dict[str, Any]]) -> str:
+                   completed_tokens: List[Dict[str, Any]]) -> Tuple[str, Dict[str, str]]:
     """
     Generate a comprehensive simulation report.
     
@@ -30,7 +30,9 @@ def generate_report(activity_processing_times: Dict[str, Dict[str, Any]],
         completed_tokens: List of completed token data
         
     Returns:
-        Path to the generated report
+        Tuple containing:
+        - Path to the generated report
+        - Dictionary with paths to generated visualizations
     """
     # Normalize column names in transitions_df to lowercase
     transitions_df.columns = map(str.lower, transitions_df.columns)
@@ -87,6 +89,7 @@ def generate_report(activity_processing_times: Dict[str, Dict[str, Any]],
     token_df = pd.DataFrame(token_data)
 
     # Generate visualizations
+    visualization_paths = {}
     try:
         visualization_paths = generate_visualizations(
             base_filename, activity_df, resource_df, token_df
@@ -133,7 +136,7 @@ def generate_report(activity_processing_times: Dict[str, Dict[str, Any]],
     logging.info(f"  Average Process Time: {process_metrics['avg_time']} minutes")
     logging.info(f"  90th Percentile Process Time: {process_metrics['percentile_90_time']} minutes")
 
-    return output_path
+    return output_path, visualization_paths
 
 def calculate_process_metrics(completed_tokens: List[Dict[str, Any]]) -> Dict[str, float]:
     """
