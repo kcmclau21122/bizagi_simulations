@@ -57,32 +57,16 @@ class ProcessModel:
         self.links.append(link_data)
         self.graph.add_edge(source_id, target_id, **attributes)
         
-    def get_node(self, node_id: str) -> Dict[str, Any]:
-        """Get node data by ID."""
-        return self.nodes.get(node_id, {})
-        
-    def get_outgoing_links(self, node_id: str) -> List[Dict[str, Any]]:
-        """Get outgoing links from a node."""
-        return [link for link in self.links if link.get('source') == node_id]
-        
-    def get_incoming_links(self, node_id: str) -> List[Dict[str, Any]]:
-        """Get incoming links to a node."""
-        return [link for link in self.links if link.get('target') == node_id]
-        
-    def get_start_nodes(self) -> List[str]:
-        """Get all start nodes in the process."""
-        return [node_id for node_id, data in self.nodes.items() 
-                if data.get('type') == 'Start']
-                
-    def get_end_nodes(self) -> List[str]:
-        """Get all end nodes in the process."""
-        return [node_id for node_id, data in self.nodes.items() 
-                if data.get('type') == 'Stop']
-    
     def get_next_nodes(self, node_id: str) -> List[str]:
         """
         Determine the next node(s) based on the gateway type and probabilities.
-        Uses a strategy similar to the choose_node function but as a method.
+        For inclusive gateways, potentially returns multiple paths based on probabilities.
+        
+        Args:
+            node_id: ID of the current node
+            
+        Returns:
+            List of next node IDs to traverse
         """
         node_data = self.get_node(node_id)
         gateway = node_data.get("gateway")
@@ -108,7 +92,7 @@ class ProcessModel:
                 # Get probabilities
                 probabilities = {}
                 for condition, target in condition_targets.items():
-                    probability = node_data.get(condition, 0.5)
+                    probability = node_data.get(condition.lower(), 0.5)
                     probabilities[condition] = probability
                 
                 # Normalize probabilities
@@ -128,26 +112,94 @@ class ProcessModel:
             if outgoing_links:
                 return [random.choice(outgoing_links).get('target')]
                 
-        elif gateway == "[Inclusive Gateway]":
-            # Handle inclusive gateway
+        elif gateway == "[Inclusive Gateway]" or node_type == "[Inclusive Gateway]":
+            # Enhanced inclusive gateway handling
             targets = []
+            
+            # Debug information
+            logging.debug(f"Processing inclusive gateway: {node_id}")
+            logging.debug(f"Node data: {node_data}")
+            logging.debug(f"Outgoing links: {outgoing_links}")
+            
             for link in outgoing_links:
                 link_type = link.get('type', '')
+                logging.debug(f"Evaluating link: {link}")
+                
                 if "CONDITION-" in str(link_type):
                     condition = link_type.split("CONDITION-")[1].strip()
-                    probability = node_data.get(condition.lower(), 0.5)
+                    # Look for probability by various condition names (lowercase for case insensitivity)
+                    probability_key = condition.lower()
                     
-                    if random.random() <= probability:
+                    # Try standard formats (yes, no, post, etc.)
+                    probability = node_data.get(probability_key, None)
+                    
+                    # If not found, try looking for similarly named keys
+                    if probability is None:
+                        for key in node_data:
+                            if isinstance(key, str) and key.lower() in probability_key:
+                                probability = node_data[key]
+                                break
+                    
+                    # Default if still not found
+                    if probability is None:
+                        probability = 0.5
+                        logging.warning(f"No probability found for condition {condition}, using default 0.5")
+                    
+                    logging.debug(f"Condition: {condition}, Probability: {probability}")
+                    
+                    # For inclusive gateway, roll for each path independently
+                    rand_value = random.random()
+                    if rand_value <= float(probability):
                         targets.append(link.get('target'))
+                        logging.debug(f"Selected path: {link.get('target')} (random value: {rand_value})")
+                elif not link_type.startswith("CONDITION-"):
+                    # For non-condition links in an inclusive gateway, always include
+                    targets.append(link.get('target'))
+                    logging.debug(f"Including non-condition path: {link.get('target')}")
             
             # If no targets selected, pick one randomly as fallback
             if not targets and outgoing_links:
-                targets = [random.choice(outgoing_links).get('target')]
-                
+                chosen_link = random.choice(outgoing_links)
+                targets = [chosen_link.get('target')]
+                logging.debug(f"No paths selected, choosing random fallback: {targets[0]}")
+            
+            logging.debug(f"Final targets for inclusive gateway: {targets}")
             return targets
         
         # Default: return all targets (normal flow)
         return [link.get('target') for link in outgoing_links]
+    
+    def get_node(self, node_id: str) -> Dict[str, Any]:
+        """
+        Get node data by node ID.
+        
+        Args:
+            node_id: ID of the node to get
+            
+        Returns:
+            Dictionary with node data or empty dict if not found
+        """
+        return self.nodes.get(node_id, {})
+    
+        
+    def get_outgoing_links(self, node_id: str) -> List[Dict[str, Any]]:
+        """Get outgoing links from a node."""
+        return [link for link in self.links if link.get('source') == node_id]
+        
+    def get_incoming_links(self, node_id: str) -> List[Dict[str, Any]]:
+        """Get incoming links to a node."""
+        return [link for link in self.links if link.get('target') == node_id]
+        
+    def get_start_nodes(self) -> List[str]:
+        """Get all start nodes in the process."""
+        return [node_id for node_id, data in self.nodes.items() 
+                if data.get('type') == 'Start']
+                
+    def get_end_nodes(self) -> List[str]:
+        """Get all end nodes in the process."""
+        return [node_id for node_id, data in self.nodes.items() 
+                if data.get('type') == 'Stop']
+    
         
     def to_json(self, output_path: str) -> str:
         """Save the process model to a JSON file."""

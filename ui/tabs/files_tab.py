@@ -257,6 +257,7 @@ class FilesTab:
         
         info_text = ""
         
+        # Process XPDL file first
         if not os.path.exists(xpdl_path):
             info_text += "XPDL file not found or not selected.\n\n"
         else:
@@ -265,13 +266,47 @@ class FilesTab:
             info_text += f"Size: {os.path.getsize(xpdl_path) / 1024:.1f} KB\n\n"
             
             try:
-                # Add basic XPDL file analysis here
+                # Add XPDL file analysis
                 info_text += "Analyzing XPDL file...\n"
-                # This could be expanded with more detailed XPDL analysis
-                info_text += "XPDL analysis will be enhanced in a future version.\n\n"
+                
+                # Parse XPDL and generate sequences
+                from data.xpdl_parser import parse_xpdl_to_sequences
+                base_name = os.path.splitext(os.path.basename(xpdl_path))[0]
+                sequence_file_path = f"{base_name}_sequences.txt"
+                
+                info_text += "Parsing XPDL to sequences...\n"
+                parse_xpdl_to_sequences(xpdl_path, sequence_file_path)
+                
+                # Count the number of sequences
+                sequences_count = 0
+                with open(sequence_file_path, 'r') as f:
+                    for line in f:
+                        if '->' in line:
+                            sequences_count += 1
+                
+                info_text += f"Sequences saved to: {sequence_file_path}\n"
+                info_text += f"Number of sequences: {sequences_count}\n\n"
+                
+                # Generate process paths
+                from data.process_paths import analyze_process_paths
+                
+                info_text += "Analyzing process paths...\n"
+                try:
+                    paths_file, summary = analyze_process_paths(xpdl_path)
+                    info_text += f"Process paths saved to: {paths_file}\n\n"
+                    info_text += "Path Analysis Summary:\n"
+                    info_text += summary
+                except Exception as e:
+                    import traceback
+                    info_text += f"Error analyzing process paths: {str(e)}\n"
+                    info_text += f"Error details: {traceback.format_exc()}\n\n"
+                
             except Exception as e:
-                info_text += f"Error analyzing XPDL: {str(e)}\n\n"
+                import traceback
+                info_text += f"Error analyzing XPDL: {str(e)}\n"
+                info_text += f"Error details: {traceback.format_exc()}\n\n"
         
+        # Process metrics file if it exists
         if not os.path.exists(metrics_path):
             info_text += "Metrics file not found or not selected.\n"
         else:
@@ -305,3 +340,4 @@ class FilesTab:
         
         # Reset cursor to normal
         self.frame.config(cursor="")
+        

@@ -1,0 +1,29 @@
+PROCESS PATHS ANALYSIS
+======================
+
+XPDL File: C:/Users/kcmclau.EVOFORGE/Repos/bizagi_simulations/Bizagi/5.5_1/5.5.13 Real Property-Monthly Reviews-Inclusive.xpdl
+Total Paths: 4
+
+Gateways in the process:
+  - Complete /Accurate?
+  - Note Accuracy in Asset Change Tracker (5.5.13.2)
+  - Work with REO RPO to Correct (5.5.13.3)
+  - Create Journal Entries?
+  - Create/Post Journal Entries (5.5.13.4)
+  - Inclusive Path 3
+
+ALL POSSIBLE PROCESS PATHS:
+=========================
+
+Path 1:
+  Monthly ->   Review AM using Asset Change Tracker (5.5.13.1) ->   Complete /Accurate? ->   Note Accuracy in Asset Change Tracker (5.5.13.2) ->   Unknown
+
+Path 2:
+  Monthly ->   Review AM using Asset Change Tracker (5.5.13.1) ->   Complete /Accurate? ->   Work with REO RPO to Correct (5.5.13.3) ->   Create Journal Entries? ->   Create/Post Journal Entries (5.5.13.4) ->   Unknown
+
+Path 3:
+  Monthly ->   Review AM using Asset Change Tracker (5.5.13.1) ->   Complete /Accurate? ->   Work with REO RPO to Correct (5.5.13.3) ->   Create Journal Entries? ->   Note Accuracy in Asset Change Tracker (5.5.13.2) ->   Unknown
+
+Path 4:
+  Monthly ->   Review AM using Asset Change Tracker (5.5.13.1) ->   Complete /Accurate? ->   Work with REO RPO to Correct (5.5.13.3) ->   Create Journal Entries? ->   Inclusive Path 3 ->   Unknown
+

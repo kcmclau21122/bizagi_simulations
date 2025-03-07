@@ -69,7 +69,8 @@ class SimulationRunner:
             xpdl_file_path = self.config.get("xpdl_file_path")
             metrics_file_path = self.config.get("metrics_file_path")
             
-            output_sequences_path = 'output_sequences.txt'
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            output_sequences_path = f'output_sequences_{timestamp}.txt'
             parse_xpdl_to_sequences(xpdl_file_path, output_sequences_path)
             
             # Load simulation metrics
@@ -81,7 +82,11 @@ class SimulationRunner:
             self._update_progress("Building process model...")
             builder = ProcessModelBuilder()
             graph = builder.build_from_sequences(output_sequences_path, simulation_metrics)
-            json_file_path = builder.save_to_json()
+            
+            # Generate a timestamped JSON filename to ensure fresh model
+            json_file_path = f"process_model_{timestamp}.json"
+            json_file_path = builder.save_to_json(json_file_path)
+            logging.info(f"Process model saved to: {json_file_path}")
             
             # Generate process diagram
             self._update_progress("Generating process diagram...")
@@ -147,8 +152,11 @@ class SimulationRunner:
             # Add visualization paths to results - NEW
             simulation_results["visualization_paths"] = visualization_paths
             
+            # Add model path to results
+            simulation_results["process_model_path"] = json_file_path
+            
             logging.info(f"Report generated at {report_path}")
-            logging.info(f"Visualization paths: {visualization_paths}")  # Added for debugging
+            logging.info(f"Visualization paths: {visualization_paths}")
             self._update_progress(f"Simulation complete. Report saved to {report_path}")
             
             # Signal completion
