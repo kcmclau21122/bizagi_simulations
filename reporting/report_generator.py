@@ -5,7 +5,7 @@ import numpy as np
 from datetime import datetime
 from typing import Dict, List, Any, Optional, Tuple
 
-from .visualizations import (
+from reporting.visualizations import (
     generate_resource_chart,
     generate_activity_chart,
     generate_token_histogram,
@@ -67,6 +67,7 @@ def generate_report(activity_processing_times: Dict[str, Dict[str, Any]],
         "Min Time Waiting for Resources (min)": process_metrics["min_wait_time"],
         "Max Time Waiting for Resources (min)": process_metrics["max_wait_time"],
         "Avg Time Waiting for Resources (min)": process_metrics["avg_wait_time"],
+        "Avg Processing Time (min)": process_metrics["avg_time"] - process_metrics["avg_wait_time"]
     }
 
     # Insert the process row as the first row in the activity data
@@ -119,11 +120,14 @@ def generate_report(activity_processing_times: Dict[str, Dict[str, Any]],
             "Metric": "Average Process Time (min)",
             "Value": process_metrics["avg_time"]
         }, {
-            "Metric": "90th Percentile Process Time (min)",
-            "Value": process_metrics["percentile_90_time"]
+            "Metric": "Average Processing Time (min)",
+            "Value": process_metrics["avg_time"] - process_metrics["avg_wait_time"]
         }, {
             "Metric": "Average Wait Time (min)",
             "Value": process_metrics["avg_wait_time"]
+        }, {
+            "Metric": "90th Percentile Process Time (min)",
+            "Value": process_metrics["percentile_90_time"]
         }])
         summary_df.to_excel(writer, index=False, sheet_name="Summary")
 
@@ -134,6 +138,8 @@ def generate_report(activity_processing_times: Dict[str, Dict[str, Any]],
     logging.info(f"  Tokens Completed: {len(completed_tokens)}")
     logging.info(f"  Completion Rate: {process_metrics['completion_rate']}%")
     logging.info(f"  Average Process Time: {process_metrics['avg_time']} minutes")
+    logging.info(f"  Average Processing Time: {process_metrics['avg_time'] - process_metrics['avg_wait_time']} minutes")
+    logging.info(f"  Average Wait Time: {process_metrics['avg_wait_time']} minutes")
     logging.info(f"  90th Percentile Process Time: {process_metrics['percentile_90_time']} minutes")
 
     return output_path, visualization_paths
@@ -224,11 +230,13 @@ def process_activity_data(activity: str, data: Dict[str, Any],
     Returns:
         Dictionary of processed activity data
     """
-    durations = data.get("durations", [])
-    wait_times = data.get("wait_times", [])
+    # Get the relevant data arrays
+    processing_times = data.get("processing_times", [])  # Pure processing times
+    wait_times = data.get("wait_times", [])  # Wait times
+    durations = data.get("durations", [])  # Total durations (for backward compatibility)
     tokens_started = data.get("tokens_started", 0)
     tokens_completed = data.get("tokens_completed", 0)
-
+    
     # Determine activity type
     activity_type = "Unknown"
     
@@ -251,21 +259,35 @@ def process_activity_data(activity: str, data: Dict[str, Any],
     if isinstance(activity_type, str) and "condition" in activity_type.lower():
         activity_type = "Gateway"
 
-    # Calculate statistics
-    min_time = round(min(durations), 2) if durations else 0
-    max_time = round(max(durations), 2) if durations else 0
-    avg_time = round(sum(durations) / len(durations), 2) if durations else 0
-    median_time = round(sorted(durations)[len(durations) // 2], 2) if durations else 0
-    std_dev_time = round(np.std(durations), 2) if durations else 0
-    percentile_90_time = round(np.percentile(durations, 90), 2) if durations else 0
+    # Calculate statistics for processing times
+    min_processing_time = round(min(processing_times), 2) if processing_times else 0
+    max_processing_time = round(max(processing_times), 2) if processing_times else 0
+    avg_processing_time = round(sum(processing_times) / len(processing_times), 2) if processing_times else 0
     
+    # Calculate statistics for wait times
     total_wait_time = round(sum(wait_times), 2) if wait_times else 0
-    min_wait_time = round(min(wait_times), 2) if wait_times else 0
-    max_wait_time = round(max(wait_times), 2) if wait_times else 0
-    avg_wait_time = round(sum(wait_times) / len(wait_times), 2) if wait_times else 0
+    min_wait_time = round(min(wait_times), 2) if wait_times and any(wait_times) else 0
+    max_wait_time = round(max(wait_times), 2) if wait_times and any(wait_times) else 0
+    avg_wait_time = round(total_wait_time / tokens_completed, 2) if wait_times and tokens_completed > 0 else 0
     
+    # Calculate total time (processing + wait)
+    avg_total_time = avg_processing_time + avg_wait_time
+    
+    # If we don't have processing times but do have durations, use those
+    if not processing_times and durations:
+        min_time = round(min(durations), 2)
+        max_time = round(max(durations), 2)
+        avg_time = round(sum(durations) / len(durations), 2)
+    else:
+        # Otherwise use the calculated total times
+        min_time = min_processing_time + min_wait_time  # Simple approximation
+        max_time = max_processing_time + max_wait_time  # Simple approximation
+        avg_time = avg_total_time
+    
+    # Calculate completion rate
     completion_rate = round((tokens_completed / tokens_started) * 100, 2) if tokens_started > 0 else 0
-
+    
+    # Return consolidated statistics
     return {
         "Activity": activity,
         "Activity Type": activity_type,
@@ -275,9 +297,7 @@ def process_activity_data(activity: str, data: Dict[str, Any],
         "Min Time (min)": min_time,
         "Max Time (min)": max_time,
         "Avg Time (min)": avg_time,
-        "Median Time (min)": median_time,
-        "Std Dev Time (min)": std_dev_time,
-        "90th Percentile Time (min)": percentile_90_time,
+        "Avg Processing Time (min)": avg_processing_time,
         "Total Time Waiting for Resources (min)": total_wait_time,
         "Min Time Waiting for Resources (min)": min_wait_time,
         "Max Time Waiting for Resources (min)": max_wait_time,
@@ -297,12 +317,16 @@ def process_token_data(completed_tokens: List[Dict[str, Any]]) -> List[Dict[str,
     token_data = []
     for token in completed_tokens:
         process_duration = (token['end_time'] - token['start_time']).total_seconds() / 60
+        wait_time = token['total_wait_time']
+        processing_time = process_duration - wait_time
+        
         token_data.append({
             "Token ID": token.get('token_id', token.get('current_task', 'Unknown')),
             "Start Time": token['start_time'],
             "End Time": token['end_time'],
             "Total Duration (min)": round(process_duration, 2),
-            "Wait Time (min)": round(token['total_wait_time'], 2),
+            "Processing Time (min)": round(processing_time, 2),
+            "Wait Time (min)": round(wait_time, 2),
             "Path": " -> ".join(token.get('path', [])),
         })
     return token_data

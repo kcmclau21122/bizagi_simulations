@@ -114,15 +114,30 @@ class SimulationRunner:
             try:
                 start_node = process_model.get_start_nodes()[0]
                 node_data = process_model.get_node(start_node)
-                max_arrival_count = int(node_data.get("max arrival count", 20))
+                base_arrival_count = int(node_data.get("max arrival count", 20))
                 arrival_interval = float(node_data.get("arrival interval", 5))
+                
+                # Scale the number of tokens based on simulation days
+                # We use a more balanced approach to avoid overwhelming the system
+                # For longer simulations, we scale the number of tokens
+                tokens_per_day = base_arrival_count / 2  # Default assumption: base is for 2 days
+                max_arrival_count = int(tokens_per_day * simulation_days)
+                
+                # Cap to avoid excessive processing in UI
+                max_cap = 5000  # Reasonable upper limit
+                if max_arrival_count > max_cap:
+                    max_arrival_count = max_cap
+                    logging.info(f"Capped token count to {max_cap} for performance reasons")
+                
+                logging.info(f"Adjusted arrival count: {max_arrival_count} for {simulation_days} days " +
+                           f"(base: {base_arrival_count}, tokens per day: {tokens_per_day})")
             except (IndexError, ValueError) as e:
                 logging.warning(f"Could not extract start node parameters: {e}")
-                max_arrival_count = 20
+                max_arrival_count = min(20 * simulation_days, 1000)  # Scale with days but cap at 1000
                 arrival_interval = 5
                 
             # Schedule tokens
-            self._update_progress(f"Scheduling {max_arrival_count} tokens...")
+            self._update_progress(f"Scheduling up to {max_arrival_count} tokens...")
             simulation_end_date = start_time + datetime.timedelta(days=simulation_days)
             tokens_scheduled = engine.schedule_tokens(
                 max_arrival_count, arrival_interval, simulation_end_date

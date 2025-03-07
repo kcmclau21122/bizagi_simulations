@@ -41,6 +41,7 @@ class SimulationEngine:
         self.tokens = {}  # Active tokens by ID
         self.completed_tokens = []  # Completed tokens
         self.resource_manager = ResourceManager()
+        self.simulation_days = 0  # Will be set during run_simulation
         
         # Set up resources based on the process model
         self._initialize_resources()
@@ -64,10 +65,10 @@ class SimulationEngine:
     def schedule_tokens(self, count: int, interval_minutes: int, 
                        end_time: datetime) -> int:
         """
-        Schedule tokens to start the process.
+        Schedule tokens to start the process, distributed across the simulation period.
         
         Args:
-            count: Number of tokens to schedule
+            count: Target number of tokens to schedule
             interval_minutes: Minutes between token arrivals
             end_time: End time limit for scheduling
             
@@ -81,7 +82,26 @@ class SimulationEngine:
         current_time = self.start_time
         token_count = 0
         
-        while token_count < count and current_time <= end_time:
+        # Calculate total available time slots based on work hours
+        total_minutes = 0
+        temp_time = self.start_time
+        
+        # Count actual available working minutes in the simulation period
+        while temp_time <= end_time:
+            if is_work_time(temp_time, self.start_time, self.work_days, self.work_hours_per_day):
+                total_minutes += 1
+            temp_time += timedelta(minutes=1)
+            # For efficiency, we can skip to the next work period if we're outside work hours
+            if not is_work_time(temp_time, self.start_time, self.work_days, self.work_hours_per_day):
+                temp_time = advance_to_work_time(temp_time, self.start_time, self.work_days, self.work_hours_per_day)
+        
+        # Calculate how many tokens we can realistically schedule with the given interval
+        max_possible_tokens = total_minutes // interval_minutes
+        target_tokens = min(count, max_possible_tokens)
+        
+        logging.info(f"Scheduling up to {target_tokens} tokens over {total_minutes} available minutes")
+        
+        while token_count < target_tokens and current_time <= end_time:
             # Ensure start time is within work hours
             if not is_work_time(current_time, self.start_time, 
                               self.work_days, self.work_hours_per_day):
@@ -89,6 +109,8 @@ class SimulationEngine:
                     current_time, self.start_time, 
                     self.work_days, self.work_hours_per_day
                 )
+                if current_time > end_time:
+                    break
                 continue
                 
             # Create and schedule token
@@ -123,6 +145,7 @@ class SimulationEngine:
         Returns:
             Dictionary with simulation results
         """
+        self.simulation_days = simulation_days  # Store for later use
         simulation_end_date = self.start_time + timedelta(days=simulation_days)
         last_progress_update = datetime.now()
         progress_interval = timedelta(seconds=1)  # Update progress every second
@@ -151,7 +174,7 @@ class SimulationEngine:
                 progress = (completed / total) * 100 if total > 0 else 0
                 progress_callback(
                     f"Processing: {completed}/{total} tokens completed ({progress:.1f}%) - "
-                    f"Events: {event_count}"
+                    f"Events: {event_count} - Current sim time: {event.time}"
                 )
                 last_progress_update = datetime.now()
                 
@@ -213,23 +236,37 @@ class SimulationEngine:
                     f"Token {token_id} waiting for resource '{resource}' at {event_time}"
                 )
                 return
-                
-        # Stop waiting if token was waiting
+        
+        # Initialize processing_times array if it doesn't exist
+        if "processing_times" not in self.activity_stats[node_id]:
+            self.activity_stats[node_id]["processing_times"] = []
+        
+        # If the token was waiting, record wait time
         wait_duration = token.stop_waiting(event_time)
         if wait_duration > 0:
             self.activity_stats[node_id]["wait_times"].append(wait_duration)
             logging.info(
                 f"Token {token_id} waited {wait_duration:.2f} minutes for resource"
             )
-            
+        
         # Update token state
         token.add_to_path(node_id)
         
         # Update activity statistics
         self.activity_stats[node_id]["tokens_started"] += 1
         
-        # Determine processing time
+        # Calculate pure processing time
         task_duration = self._calculate_task_duration(node)
+        
+        # Store pure processing time separately
+        self.activity_stats[node_id]["processing_times"].append(task_duration)
+        
+        # Store in durations (for backward compatibility)
+        # For Bizagi compatibility: durations should track total time (wait + processing)
+        # But we're only calculating it at the end of the activity
+        self.activity_stats[node_id]["durations"].append(task_duration)
+        
+        # Calculate end time based on processing time
         end_time = event_time + timedelta(minutes=task_duration)
         
         # Ensure end time is within work hours
@@ -237,19 +274,18 @@ class SimulationEngine:
             end_time = advance_to_work_time(
                 end_time, self.start_time, self.work_days, self.work_hours_per_day
             )
-            
-        # Track duration
-        self.activity_stats[node_id]["durations"].append(task_duration)
         
         # Schedule end event
         heapq.heappush(
             self.event_queue, 
             Event(end_time, token_id, node_id, "end")
         )
+        
         logging.info(
             f"Token {token_id} started task '{node_id}' at {event_time}, "
-            f"scheduled to end at {end_time}"
+            f"scheduled to end at {end_time} (processing time: {task_duration:.2f} min)"
         )
+        
         
     def _handle_end_event(self, event: Event) -> None:
         """
@@ -334,8 +370,8 @@ class SimulationEngine:
         Returns:
             Dictionary with simulation results
         """
-        # Calculate resource utilization
-        simulation_end = self.start_time + timedelta(days=self.work_days)
+        # Calculate resource utilization using proper simulation end date
+        simulation_end = self.start_time + timedelta(days=self.simulation_days)
         resource_utilization = self.resource_manager.calculate_utilization(
             self.start_time, simulation_end
         )
@@ -343,9 +379,14 @@ class SimulationEngine:
         # Convert tokens to dictionaries for JSON serialization
         completed_token_dicts = [token.to_dict() for token in self.completed_tokens]
         
+        # Also include active tokens to see where they got stuck
+        active_token_dicts = [token.to_dict() for token in self.tokens.values()]
+        
         return {
             "activity_processing_times": self.activity_stats,
             "resource_utilization": resource_utilization,
             "total_tokens_started": self.total_tokens_started,
-            "completed_tokens": completed_token_dicts
+            "completed_tokens": completed_token_dicts,
+            "active_tokens": active_token_dicts,
+            "simulation_days": self.simulation_days
         }

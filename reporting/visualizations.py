@@ -89,41 +89,57 @@ def generate_activity_chart(activity_df: pd.DataFrame, output_path: str) -> str:
     # Create bar chart with dual colors for processing and waiting time
     ax = plt.subplot(111)
     
-    # Processing time bars
+    # Use the specific processing time and wait time columns
+    processing_times = activity_times["Avg Processing Time (min)"]
+    wait_times = activity_times["Avg Time Waiting for Resources (min)"]
+    
+    # Create stacked bars with these values
     bars1 = ax.bar(
         activity_times["Activity"], 
-        activity_times["Avg Time (min)"],
+        processing_times,
         label='Processing Time',
         color='#5975a4'
     )
     
-    # Wait time bars (stacked)
     bars2 = ax.bar(
         activity_times["Activity"], 
-        activity_times["Avg Time Waiting for Resources (min)"],
+        wait_times,
+        bottom=processing_times,
         label='Wait Time',
         color='#a4596d'
     )
     
+    # Add value labels for processing time
+    for bar in bars1:
+        height = bar.get_height()
+        if height > 0.01:  # Only add label if there's a visible bar
+            ax.text(
+                bar.get_x() + bar.get_width()/2., height/2,
+                f'{height:.1f}',
+                ha='center', va='center',
+                fontsize=9, color='white'
+            )
+    
+    # Add value labels for wait time
+    for bar in bars2:
+        height = bar.get_height()
+        if height > 0.01:  # Only add label if there's a visible bar
+            ax.text(
+                bar.get_x() + bar.get_width()/2., 
+                bar.get_y() + height/2,
+                f'{height:.1f}',
+                ha='center', va='center',
+                fontsize=9, color='white'
+            )
+    
     # Add labels and title
-    plt.title("Top 10 Activities by Average Processing Time", fontsize=14)
+    plt.title("Top 10 Activities by Average Time", fontsize=14)
     plt.xlabel("Activity", fontsize=12)
     plt.ylabel("Time (minutes)", fontsize=12)
     plt.legend()
     
     # Rotate x labels
     plt.xticks(rotation=45, ha='right')
-    
-    # Add value labels
-    for bar in bars1:
-        height = bar.get_height()
-        if height > 0:
-            ax.text(
-                bar.get_x() + bar.get_width()/2., height,
-                f'{height:.1f}',
-                ha='center', va='bottom',
-                fontsize=9
-            )
     
     plt.tight_layout()
     plt.savefig(output_path)
