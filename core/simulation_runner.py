@@ -1,261 +1,328 @@
-import os
 import sys
-
-# Add project root to sys.path 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
+import os
 import threading
 import logging
-import random
-import datetime
 import pandas as pd
-from typing import Callable, Dict, Any, Optional
+import random
+import heapq
+from datetime import datetime, timedelta
+from typing import Dict, Any, Optional, List, Callable
 
-# Use absolute imports for local modules
-from core.process_model import ProcessModel
+# Add project root to sys.path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from data.data_loader import DataLoader
 from core.simulation_engine import SimulationEngine
-
-# Use absolute imports for other modules
+from core.process_model import ProcessModel
+from core.event import Event
+from core.process_token import Token
+from data.data_processing import ResultsExporter
 from utils.config import ConfigManager
+from utils.time_utils import day_of_week_to_index, is_work_time, advance_to_work_time
 from data.xpdl_parser import parse_xpdl_to_sequences
 from data.process_builder import ProcessModelBuilder
-from data.visualizations import diagram_process
-from reporting.report_generator import generate_report
 
 class SimulationRunner:
     """
-    Manages the execution of a simulation, handling file parsing,
-    model building, simulation execution, and reporting.
+    Manages the simulation process from configuration to results.
+    Handles data loading, simulation setup, execution, and results processing.
     """
     
-    def __init__(self, config: ConfigManager, 
-                progress_callback: Optional[Callable[[str], None]] = None, 
-                completion_callback: Optional[Callable[[Dict[str, Any]], None]] = None):
+    def __init__(
+        self, 
+        config: ConfigManager, 
+        progress_callback: Optional[Callable[[str], None]] = None,
+        completion_callback: Optional[Callable[[Dict[str, Any]], None]] = None
+    ):
         """
         Initialize the simulation runner.
         
         Args:
             config: Configuration manager with simulation settings
-            progress_callback: Callback for progress updates
-            completion_callback: Callback for simulation completion
+            progress_callback: Optional callback for reporting progress
+            completion_callback: Optional callback for reporting completion
         """
         self.config = config
         self.progress_callback = progress_callback
         self.completion_callback = completion_callback
-        self.error = None
-        self.simulation_thread = None
+        self.running = False
+        self.cancel_requested = False
+        self.thread = None
         
     def run(self) -> None:
-        """Run the simulation in a background thread."""
-        # Start a background thread for the simulation
-        self.simulation_thread = threading.Thread(target=self._run_simulation)
-        self.simulation_thread.daemon = True
-        self.simulation_thread.start()
+        """Run the simulation in a separate thread."""
+        if self.running:
+            logging.warning("Simulation already running")
+            return
+            
+        self.running = True
+        self.cancel_requested = False
+        
+        # Run in a separate thread
+        self.thread = threading.Thread(target=self._run_simulation)
+        self.thread.daemon = True
+        self.thread.start()
         
     def _run_simulation(self) -> None:
-        """Execute the simulation process."""
+        """Run the simulation process."""
+        results = {}
+        
         try:
-            self._update_progress("Initializing simulation...")
+            # Report progress
+            self._update_progress("Loading data...")
             
-            # Set up logging
-            self._setup_logging()
+            # Load XPDL file
+            xpdl_path = self.config.get('xpdl_file_path', '')
+            metrics_path = self.config.get('metrics_file_path', '')
             
-            # Set random seed
-            random_seed = self.config.get("random_seed", 10)
-            random.seed(random_seed)
+            if not xpdl_path or not metrics_path:
+                raise ValueError("Missing required file paths")
+                
+            # Load XPDL
+            xpdl_root = DataLoader.load_xpdl(xpdl_path)
             
-            # Parse input files
-            self._update_progress("Parsing XPDL file...")
-            xpdl_file_path = self.config.get("xpdl_file_path")
-            metrics_file_path = self.config.get("metrics_file_path")
+            # Load metrics
+            metrics_df = DataLoader.load_simulation_metrics(metrics_path)
             
-            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            output_sequences_path = f'output_sequences_{timestamp}.txt'
-            parse_xpdl_to_sequences(xpdl_file_path, output_sequences_path)
+            # Validate metrics
+            is_valid, errors = DataLoader.validate_simulation_metrics(metrics_df)
+            if not is_valid:
+                raise ValueError(f"Invalid metrics file: {'; '.join(errors)}")
+                
+            # Preprocess metrics
+            processed_metrics = DataLoader.preprocess_metrics(metrics_df)
             
-            # Load simulation metrics
-            self._update_progress("Loading simulation metrics...")
-            simulation_metrics = pd.read_excel(metrics_file_path, sheet_name=0)
-            simulation_metrics.columns = map(str.lower, simulation_metrics.columns)
+            # Extract simulation parameters
+            # Instead of getting parameters from metrics, use the ones set in the UI
+            # simulation_params = DataLoader.get_simulation_parameters(processed_metrics)
+            simulation_params = {
+                'max_arrival_count': self.config.get('token_count', 20),
+                'min_interval': self.config.get('min_interval', 3.0),
+                'avg_interval': self.config.get('avg_interval', 5.0),
+                'max_interval': self.config.get('max_interval', 8.0)
+            }
             
-            # Build process model
-            self._update_progress("Building process model...")
+            # Report progress
+            self._update_progress("Building process model from XPDL...")
+            
+            # Parse XPDL to sequences file
+            base_filename = os.path.splitext(os.path.basename(xpdl_path))[0]
+            sequence_file_path = f"{base_filename}_sequences.txt"
+            parse_xpdl_to_sequences(xpdl_path, sequence_file_path)
+            
+            # Build the process model from sequences
             builder = ProcessModelBuilder()
-            graph = builder.build_from_sequences(output_sequences_path, simulation_metrics)
+            process_graph = builder.build_from_sequences(sequence_file_path, processed_metrics)
             
-            # Generate a timestamped JSON filename to ensure fresh model
-            json_file_path = f"process_model_{timestamp}.json"
-            json_file_path = builder.save_to_json(json_file_path)
-            logging.info(f"Process model saved to: {json_file_path}")
+            # Convert the NetworkX DiGraph to a ProcessModel object
+            self._update_progress("Converting graph to ProcessModel...")
+            process_model = ProcessModel()
+            process_model.graph = process_graph
             
-            # Generate process diagram
-            self._update_progress("Generating process diagram...")
-            diagram_process(json_file_path)
+            # Add nodes and links from the graph
+            for node_id, node_data in process_graph.nodes(data=True):
+                process_model.nodes[node_id] = node_data
+                
+            # Add links (edges)
+            for source, target, edge_data in process_graph.edges(data=True):
+                link_data = {
+                    'source': source,
+                    'target': target,
+                    **edge_data  # Include all edge attributes
+                }
+                process_model.links.append(link_data)
+                
+            # Debug information
+            self._update_progress(f"Built process model with {len(process_model.nodes)} nodes and {len(process_model.links)} links")
+            start_nodes = process_model.get_start_nodes()
+            self._update_progress(f"Found {len(start_nodes)} start nodes: {start_nodes}")
             
-            # Create process model
-            process_model = ProcessModel.from_json(json_file_path)
+            # Report progress
+            self._update_progress("Setting up simulation...")
             
-            # Set up simulation parameters
-            simulation_days = self.config.get("simulation_days", 2)
-            number_workdays = self.config.get_number_of_workdays()
-            work_hours_per_day = self.config.get_work_hours_per_day()
+            # Setup simulation
+            # Use current date for simulation start
+            start_date = datetime.now().replace(hour=8, minute=0, second=0, microsecond=0)
             
-            work_hours_start = self.config.get("work_hours_start", 9)
+            # Calculate work days per week
+            workdays = self.config.get('workdays', [True, True, True, True, True, False, False])
+            work_days_per_week = sum(1 for day in workdays if day)
             
-            # Set up start time - default to Monday at start of work hours
-            start_time = datetime.datetime(2025, 1, 6, work_hours_start, 0)  # Monday
+            # Get work hours
+            work_hours_start = self.config.get('work_hours_start', 8)
+            work_hours_end = self.config.get('work_hours_end', 17)
+            work_hours_per_day = work_hours_end - work_hours_start
             
-            # Create simulation engine
+            # Get simulation days
+            simulation_days = self.config.get('simulation_days', 5)
+            
+            # Create the simulation engine with the populated process model
             engine = SimulationEngine(
-                process_model, start_time, number_workdays, work_hours_per_day
+                process_model=process_model,  # Use the proper ProcessModel object
+                start_time=start_date,
+                work_days=work_days_per_week,
+                work_hours_per_day=work_hours_per_day
             )
             
-            # Extract start node parameters
-            try:
-                start_node = process_model.get_start_nodes()[0]
-                node_data = process_model.get_node(start_node)
-                base_arrival_count = int(node_data.get("max arrival count", 20))
-                arrival_interval = float(node_data.get("arrival interval", 5))
-                
-                # Scale the number of tokens based on simulation days
-                # We use a more balanced approach to avoid overwhelming the system
-                # For longer simulations, we scale the number of tokens
-                tokens_per_day = base_arrival_count / 2  # Default assumption: base is for 2 days
-                max_arrival_count = int(tokens_per_day * simulation_days)
-                
-                # Cap to avoid excessive processing in UI
-                max_cap = 5000  # Reasonable upper limit
-                if max_arrival_count > max_cap:
-                    max_arrival_count = max_cap
-                    logging.info(f"Capped token count to {max_cap} for performance reasons")
-                
-                logging.info(f"Adjusted arrival count: {max_arrival_count} for {simulation_days} days " +
-                           f"(base: {base_arrival_count}, tokens per day: {tokens_per_day})")
-            except (IndexError, ValueError) as e:
-                logging.warning(f"Could not extract start node parameters: {e}")
-                max_arrival_count = min(20 * simulation_days, 1000)  # Scale with days but cap at 1000
-                arrival_interval = 5
-                
-            # Schedule tokens
-            self._update_progress(f"Scheduling up to {max_arrival_count} tokens...")
-            simulation_end_date = start_time + datetime.timedelta(days=simulation_days)
-            tokens_scheduled = engine.schedule_tokens(
-                max_arrival_count, arrival_interval, simulation_end_date
-            )
-            logging.info(f"Scheduled {tokens_scheduled} tokens")
+            # Schedule tokens using triangular distribution for intervals
+            # This is where we implement the new token arrival logic
+            self._update_progress("Scheduling tokens...")
             
-            # Run simulation
-            self._update_progress("Running simulation...")
-            target_avg_time = self.config.get("target_avg_time", 0)
-            if target_avg_time > 0:
-                self._update_progress("Optimizing for target average time...")
-                # Note: Target optimization would be implemented here
-                
-            simulation_results = engine.run_simulation(simulation_days, self._update_progress)
+            max_tokens = simulation_params['max_arrival_count']
+            min_interval = simulation_params['min_interval']
+            avg_interval = simulation_params['avg_interval']
+            max_interval = simulation_params['max_interval']
             
-            # Generate report - MODIFIED to capture visualization paths
-            self._update_progress("Generating simulation report...")
-            report_path, visualization_paths = generate_report(
-                simulation_results["activity_processing_times"],
-                simulation_results["resource_utilization"],
-                simulation_results["total_tokens_started"],
-                xpdl_file_path,
-                simulation_metrics,
-                simulation_results["completed_tokens"]
+            # Calculate end date for simulation
+            end_date = start_date + timedelta(days=simulation_days)
+            
+            # Use triangular distribution to generate token arrival times
+            self._update_progress(f"Scheduling {max_tokens} tokens with triangular distribution...")
+            
+            tokens_scheduled = self._schedule_tokens_with_triangular_distribution(
+                engine, max_tokens, min_interval, avg_interval, max_interval, end_date
             )
             
-            # Add visualization paths to results - NEW
-            simulation_results["visualization_paths"] = visualization_paths
+            self._update_progress(f"Scheduled {tokens_scheduled} tokens. Running simulation...")
             
-            # Add model path to results
-            simulation_results["process_model_path"] = json_file_path
+            # Check if cancellation requested
+            if self.cancel_requested:
+                results = {"error": "Simulation cancelled by user"}
+                self._on_complete(results)
+                return
+                
+            # Run the simulation
+            results = engine.run_simulation(
+                simulation_days=simulation_days,
+                progress_callback=self._update_progress
+            )
             
-            logging.info(f"Report generated at {report_path}")
-            logging.info(f"Visualization paths: {visualization_paths}")
-            self._update_progress(f"Simulation complete. Report saved to {report_path}")
+            # Process and export results
+            self._update_progress("Processing results...")
             
-            # Signal completion
-            if self.completion_callback:
-                self.completion_callback(simulation_results)
+            # Export results
+            exporter = ResultsExporter()
+            results_path = f"{base_filename}_results.xlsx"
+            exporter.export_to_excel(results, results_path, simulation_params)
+            
+            self._update_progress(f"Results exported to {results_path}")
             
         except Exception as e:
-            logging.error(f"Error in simulation: {str(e)}", exc_info=True)
-            self.error = str(e)
-            # Signal completion with error
-            self._on_error()
+            logging.error(f"Simulation error: {str(e)}", exc_info=True)
+            results = {"error": str(e)}
             
-    def _update_progress(self, message: str) -> None:
+        finally:
+            self.running = False
+            self._on_complete(results)
+            
+    def _schedule_tokens_with_triangular_distribution(
+        self, 
+        engine: SimulationEngine, 
+        max_tokens: int,
+        min_interval: float,
+        avg_interval: float,
+        max_interval: float,
+        end_date: datetime
+    ) -> int:
         """
-        Update progress callback safely.
+        Schedule tokens using triangular distribution for arrival intervals.
         
         Args:
-            message: Progress message to report
-        """
-        if self.progress_callback:
-            try:
-                self.progress_callback(message)
-            except Exception as e:
-                logging.error(f"Error in progress callback: {str(e)}")
-                
-    def _setup_logging(self) -> None:
-        """Set up logging for the simulation."""
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        log_filename = f"simulation_log_{timestamp}.txt"
-        
-        logging.basicConfig(
-            filename=log_filename,
-            filemode='w',
-            level=logging.INFO,
-            format='%(asctime)s - %(levelname)s - %(message)s'
-        )
-        
-        # Log configuration
-        logging.info(f"Simulation started at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        logging.info(f"Configuration:")
-        for key, value in self.config.items():
-            logging.info(f"  {key}: {value}")
+            engine: Simulation engine
+            max_tokens: Maximum number of tokens to schedule
+            min_interval: Minimum interval between tokens (minutes)
+            avg_interval: Average interval between tokens (minutes) - the mode of triangular distribution
+            max_interval: Maximum interval between tokens (minutes)
+            end_date: End date for simulation
             
-    def _on_error(self) -> None:
-        """Handle simulation error."""
-        error_message = f"An error occurred during simulation: {self.error}"
-        logging.error(error_message)
-        self._update_progress(f"ERROR: {self.error}")
+        Returns:
+            Number of tokens actually scheduled
+        """
+        # Get start nodes from the process model
+        start_nodes = engine.process_model.get_start_nodes()
+        if not start_nodes:
+            # Debug information before raising error
+            logging.error(f"No start nodes found. Process model has {len(engine.process_model.nodes)} nodes.")
+            if engine.process_model.nodes:
+                node_types = {}
+                for node_id, node_data in engine.process_model.nodes.items():
+                    node_type = node_data.get('type', 'Unknown')
+                    node_types[node_type] = node_types.get(node_type, 0) + 1
+                logging.error(f"Node types: {node_types}")
+            raise ValueError("No start nodes found in the process model.")
+            
+        current_time = engine.start_time
+        token_count = 0
         
+        # Calculate total available time slots based on work hours
+        total_minutes = 0
+        temp_time = engine.start_time
+        
+        # Count actual available working minutes in the simulation period
+        while temp_time <= end_date:
+            if is_work_time(temp_time, engine.start_time, engine.work_days, engine.work_hours_per_day):
+                total_minutes += 1
+            temp_time += timedelta(minutes=1)
+            # For efficiency, skip to next work period if outside work hours
+            if not is_work_time(temp_time, engine.start_time, engine.work_days, engine.work_hours_per_day):
+                temp_time = advance_to_work_time(temp_time, engine.start_time, engine.work_days, engine.work_hours_per_day)
+                
+        # Ensure we don't try to schedule more tokens than time allows
+        # This is a rough estimate - we'll calculate more precisely as we go
+        estimated_avg_interval = (min_interval + avg_interval + max_interval) / 3
+        max_possible_tokens = max(1, int(total_minutes / estimated_avg_interval))
+        target_tokens = min(max_tokens, max_possible_tokens)
+        
+        logging.info(f"Scheduling up to {target_tokens} tokens over {total_minutes} available minutes")
+        
+        while token_count < target_tokens and current_time <= end_date:
+            # Ensure start time is within work hours
+            if not is_work_time(current_time, engine.start_time, engine.work_days, engine.work_hours_per_day):
+                current_time = advance_to_work_time(current_time, engine.start_time, engine.work_days, engine.work_hours_per_day)
+                if current_time > end_date:
+                    break
+                continue
+                
+            # Create and schedule token
+            token_id = f"Token-{token_count + 1}"
+            start_node = random.choice(start_nodes)
+            
+            token = Token(token_id, current_time, start_node)
+            engine.tokens[token_id] = token
+            
+            # Schedule start event
+            heapq.heappush(
+                engine.event_queue, 
+                Event(current_time, token_id, start_node, "start")
+            )
+            
+            logging.info(f"Scheduled {token_id} to start at {current_time}.")
+            token_count += 1
+            engine.total_tokens_started += 1
+            
+            # Calculate next interval using triangular distribution
+            interval = random.triangular(min_interval, avg_interval, max_interval)
+            current_time += timedelta(minutes=interval)
+            
+        return token_count
+            
+    def _update_progress(self, message: str) -> None:
+        """Update progress with a status message."""
+        logging.info(message)
+        if self.progress_callback:
+            self.progress_callback(message)
+            
+    def _on_complete(self, results: Dict[str, Any]) -> None:
+        """Handle simulation completion."""
         if self.completion_callback:
-            self.completion_callback({"error": self.error})
+            self.completion_callback(results)
+            
+    def cancel(self) -> None:
+        """Cancel the running simulation."""
+        if self.running:
+            self.cancel_requested = True
+            self._update_progress("Cancelling simulation...")
             
     def is_running(self) -> bool:
-        """
-        Check if simulation is still running.
-        
-        Returns:
-            True if simulation thread is active, False otherwise
-        """
-        return self.simulation_thread is not None and self.simulation_thread.is_alive()
-        
-    def cancel(self) -> None:
-        """
-        Cancel a running simulation.
-        Note: This is a best-effort attempt, as Python threads cannot be forcibly terminated.
-        """
-        # We can't really cancel a running thread in Python
-        # But we can set a flag that the simulation can check
-        self._update_progress("Cancellation requested...")
-        logging.info("Simulation cancellation requested")
-        
-def main():
-    """Main function to run a simulation."""
-    # Create a simple main function if you need one
-    config = ConfigManager()  # Initialize with default values or load from a file
-    runner = SimulationRunner(config)
-    runner.run()
-    
-    # Wait for simulation to complete
-    import time
-    while runner.is_running():
-        time.sleep(1)
-    
-    print("Simulation completed")
-
-if __name__ == "__main__":
-    main()
+        """Check if the simulation is running."""
+        return self.running

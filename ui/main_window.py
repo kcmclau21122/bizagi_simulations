@@ -58,13 +58,13 @@ class MainWindow:
         self.files_tab = FilesTab(self.tab_control, self.config)
         self.calendar_tab = CalendarTab(self.tab_control, self.config)
         self.simulation_tab = SimulationTab(self.tab_control, self.config)
-        self.results_tab = EnhancedResultsTab(self.tab_control, self.config)
+        self.enhanced_results_tab = EnhancedResultsTab(self.tab_control, self.config)
         
         # Add tabs to notebook
         self.tab_control.add(self.files_tab.frame, text='Files')
         self.tab_control.add(self.calendar_tab.frame, text='Calendar')
         self.tab_control.add(self.simulation_tab.frame, text='Simulation')
-        self.tab_control.add(self.results_tab.frame, text='Results')
+        self.tab_control.add(self.enhanced_results_tab.frame, text='Results')
         
         # Add control buttons frame - place at bottom of window
         self.btn_frame = ttk.Frame(self.main_frame)
@@ -239,7 +239,7 @@ class MainWindow:
             return
             
         # Update results tab
-        self.results_tab.update_results(results)
+        self.enhanced_results_tab.update_results(results)
         
         # Switch to results tab
         self.tab_control.select(3)  # Index of results tab

@@ -1,224 +1,236 @@
-import json
 import networkx as nx
-from networkx.readwrite import json_graph
-from typing import Dict, List, Any, Optional, Set, Tuple
-import random
 import logging
+from typing import Dict, List, Any, Optional, Set, Tuple
 
 class ProcessModel:
     """
-    Represents a business process model with nodes and links.
-    Provides methods to navigate and manipulate the process structure.
+    Represents a business process model with nodes (activities, gateways)
+    and links between them.
     """
     
     def __init__(self):
         """Initialize an empty process model."""
-        self.graph = nx.DiGraph()
-        self.nodes: Dict[str, Dict[str, Any]] = {}
-        self.links: List[Dict[str, Any]] = []
+        self.nodes = {}  # Dictionary of nodes by ID
+        self.links = []  # List of links between nodes
+        self.graph = nx.DiGraph()  # NetworkX directed graph for analysis
         
-    @classmethod
-    def from_json(cls, json_file_path: str) -> 'ProcessModel':
-        """Load a process model from a JSON file."""
-        model = cls()
+    def add_node(self, node_id: str, node_data: Dict[str, Any]) -> None:
+        """
+        Add a node to the process model.
         
-        with open(json_file_path, 'r') as file:
-            process_model_data = json.load(file)
-            
-        # Load nodes
-        for node_data in process_model_data.get('nodes', []):
-            node_id = node_data.get('id')
-            if node_id:
-                model.nodes[node_id] = node_data
-                model.graph.add_node(node_id, **node_data)
+        Args:
+            node_id: Unique identifier for the node
+            node_data: Dictionary of node attributes
+        """
+        self.nodes[node_id] = node_data
+        self.graph.add_node(node_id, **node_data)
         
-        # Load links
-        for link_data in process_model_data.get('links', []):
-            source = link_data.get('source')
-            target = link_data.get('target')
-            if source and target:
-                model.links.append(link_data)
-                model.graph.add_edge(source, target, **link_data)
-                
-        return model
-    
-    def add_node(self, node_id: str, **attributes) -> None:
-        """Add a node to the process model."""
-        self.nodes[node_id] = attributes
-        self.graph.add_node(node_id, **attributes)
+    def add_link(self, source: str, target: str, link_data: Optional[Dict[str, Any]] = None) -> None:
+        """
+        Add a link between nodes.
         
-    def add_link(self, source_id: str, target_id: str, **attributes) -> None:
-        """Add a link between nodes in the process model."""
-        link_data = {
-            'source': source_id,
-            'target': target_id,
-            **attributes
+        Args:
+            source: Source node ID
+            target: Target node ID
+            link_data: Optional dictionary of link attributes
+        """
+        link = {
+            "source": source,
+            "target": target
         }
-        self.links.append(link_data)
-        self.graph.add_edge(source_id, target_id, **attributes)
+        
+        if link_data:
+            link.update(link_data)
+            
+        self.links.append(link)
+        self.graph.add_edge(source, target, **link_data if link_data else {})
+        
+    def get_node(self, node_id: str) -> Dict[str, Any]:
+        """
+        Get a node by ID.
+        
+        Args:
+            node_id: Node identifier
+            
+        Returns:
+            Dictionary of node attributes
+        """
+        return self.nodes.get(node_id, {})
+        
+    def get_start_nodes(self) -> List[str]:
+        """
+        Get all start nodes in the process.
+        
+        Returns:
+            List of start node IDs
+        """
+        start_nodes = []
+        
+        for node_id, node_data in self.nodes.items():
+            # Check for nodes explicitly marked as Start nodes
+            if node_data.get("type") == "Start":
+                start_nodes.append(node_id)
+                
+        # If no explicit start nodes, find nodes with no incoming edges
+        if not start_nodes:
+            for node_id in self.nodes:
+                if self.graph.in_degree(node_id) == 0:
+                    start_nodes.append(node_id)
+                    
+        logging.info(f"Found {len(start_nodes)} start nodes: {start_nodes}")
+        return start_nodes
+        
+    def get_end_nodes(self) -> List[str]:
+        """
+        Get all end nodes in the process.
+        
+        Returns:
+            List of end node IDs
+        """
+        end_nodes = []
+        
+        for node_id, node_data in self.nodes.items():
+            # Check for nodes explicitly marked as End nodes
+            if node_data.get("type") == "Stop":
+                end_nodes.append(node_id)
+                
+        # If no explicit end nodes, find nodes with no outgoing edges
+        if not end_nodes:
+            for node_id in self.nodes:
+                if self.graph.out_degree(node_id) == 0:
+                    end_nodes.append(node_id)
+                    
+        return end_nodes
         
     def get_next_nodes(self, node_id: str) -> List[str]:
         """
-        Determine the next node(s) based on the gateway type and probabilities.
-        For inclusive gateways, potentially returns multiple paths based on probabilities.
+        Get all nodes that follow this node.
         
         Args:
-            node_id: ID of the current node
+            node_id: Current node ID
             
         Returns:
-            List of next node IDs to traverse
+            List of following node IDs
         """
-        node_data = self.get_node(node_id)
-        gateway = node_data.get("gateway")
-        node_type = node_data.get("type")
+        # Get all successors from the graph
+        successors = list(self.graph.successors(node_id))
         
-        # Get outgoing links
-        outgoing_links = self.get_outgoing_links(node_id)
+        # For debugging
+        if not successors:
+            logging.debug(f"Node {node_id} has no successors")
+            
+        return successors
         
-        if gateway == "[Parallel Gateway]":
-            # Return all target nodes for parallel gateway
-            return [link.get('target') for link in outgoing_links]
-            
-        elif gateway == "[Exclusive Gateway]" and "CONDITION-" not in str(node_type):
-            # Handle exclusive gateway with probabilistic selection
-            condition_targets = {}
-            for link in outgoing_links:
-                link_type = link.get('type', '')
-                if "CONDITION-" in str(link_type):
-                    condition = link_type.split("CONDITION-")[1].strip()
-                    condition_targets[condition.lower()] = link.get('target')
-            
-            if condition_targets:
-                # Get probabilities
-                probabilities = {}
-                for condition, target in condition_targets.items():
-                    probability = node_data.get(condition.lower(), 0.5)
-                    probabilities[condition] = probability
-                
-                # Normalize probabilities
-                total = sum(probabilities.values())
-                if total > 0:
-                    for condition in probabilities:
-                        probabilities[condition] /= total
-                
-                # Choose based on probabilities
-                conditions = list(probabilities.keys())
-                weights = list(probabilities.values())
-                chosen_condition = random.choices(conditions, weights=weights, k=1)[0]
-                
-                return [condition_targets[chosen_condition]]
-            
-            # If no conditions, choose randomly
-            if outgoing_links:
-                return [random.choice(outgoing_links).get('target')]
-                
-        elif gateway == "[Inclusive Gateway]" or node_type == "[Inclusive Gateway]":
-            # Enhanced inclusive gateway handling
-            targets = []
-            
-            # Debug information
-            logging.debug(f"Processing inclusive gateway: {node_id}")
-            logging.debug(f"Node data: {node_data}")
-            logging.debug(f"Outgoing links: {outgoing_links}")
-            
-            for link in outgoing_links:
-                link_type = link.get('type', '')
-                logging.debug(f"Evaluating link: {link}")
-                
-                if "CONDITION-" in str(link_type):
-                    condition = link_type.split("CONDITION-")[1].strip()
-                    # Look for probability by various condition names (lowercase for case insensitivity)
-                    probability_key = condition.lower()
-                    
-                    # Try standard formats (yes, no, post, etc.)
-                    probability = node_data.get(probability_key, None)
-                    
-                    # If not found, try looking for similarly named keys
-                    if probability is None:
-                        for key in node_data:
-                            if isinstance(key, str) and key.lower() in probability_key:
-                                probability = node_data[key]
-                                break
-                    
-                    # Default if still not found
-                    if probability is None:
-                        probability = 0.5
-                        logging.warning(f"No probability found for condition {condition}, using default 0.5")
-                    
-                    logging.debug(f"Condition: {condition}, Probability: {probability}")
-                    
-                    # For inclusive gateway, roll for each path independently
-                    rand_value = random.random()
-                    if rand_value <= float(probability):
-                        targets.append(link.get('target'))
-                        logging.debug(f"Selected path: {link.get('target')} (random value: {rand_value})")
-                elif not link_type.startswith("CONDITION-"):
-                    # For non-condition links in an inclusive gateway, always include
-                    targets.append(link.get('target'))
-                    logging.debug(f"Including non-condition path: {link.get('target')}")
-            
-            # If no targets selected, pick one randomly as fallback
-            if not targets and outgoing_links:
-                chosen_link = random.choice(outgoing_links)
-                targets = [chosen_link.get('target')]
-                logging.debug(f"No paths selected, choosing random fallback: {targets[0]}")
-            
-            logging.debug(f"Final targets for inclusive gateway: {targets}")
-            return targets
-        
-        # Default: return all targets (normal flow)
-        return [link.get('target') for link in outgoing_links]
-    
-    def get_node(self, node_id: str) -> Dict[str, Any]:
+    def get_all_paths(self) -> List[List[str]]:
         """
-        Get node data by node ID.
+        Get all possible paths through the process.
         
-        Args:
-            node_id: ID of the node to get
-            
         Returns:
-            Dictionary with node data or empty dict if not found
+            List of paths, where each path is a list of node IDs
         """
-        return self.nodes.get(node_id, {})
-    
+        start_nodes = self.get_start_nodes()
+        end_nodes = self.get_end_nodes()
         
-    def get_outgoing_links(self, node_id: str) -> List[Dict[str, Any]]:
-        """Get outgoing links from a node."""
-        return [link for link in self.links if link.get('source') == node_id]
+        all_paths = []
         
-    def get_incoming_links(self, node_id: str) -> List[Dict[str, Any]]:
-        """Get incoming links to a node."""
-        return [link for link in self.links if link.get('target') == node_id]
-        
-    def get_start_nodes(self) -> List[str]:
-        """Get all start nodes in the process."""
-        return [node_id for node_id, data in self.nodes.items() 
-                if data.get('type') == 'Start']
-                
-    def get_end_nodes(self) -> List[str]:
-        """Get all end nodes in the process."""
-        return [node_id for node_id, data in self.nodes.items() 
-                if data.get('type') == 'Stop']
-    
-        
-    def to_json(self, output_path: str) -> str:
-        """Save the process model to a JSON file."""
-        process_model_data = json_graph.node_link_data(self.graph, edges="links")
-        
-        with open(output_path, "w") as json_file:
-            json.dump(process_model_data, json_file, indent=4)
-            
-        return output_path
+        for start in start_nodes:
+            for end in end_nodes:
+                try:
+                    # Find all simple paths between start and end
+                    paths = list(nx.all_simple_paths(self.graph, start, end))
+                    all_paths.extend(paths)
+                except nx.NetworkXNoPath:
+                    # No path exists between this start and end
+                    pass
+                    
+        return all_paths
         
     def get_all_resources(self) -> Dict[str, int]:
         """
-        Get all resources used in the process model with their available counts.
-        Returns a dictionary mapping resource names to available counts.
+        Get all resources defined in the process model with their counts.
+        
+        Returns:
+            Dict mapping resource IDs to their available counts
         """
         resources = {}
-        for node_data in self.nodes.values():
-            resource = node_data.get("resource")
+        # Scan all nodes for resources
+        for node_id, node_data in self.nodes.items():
+            resource = node_data.get('resource')
             if resource:
-                resources[resource] = max(resources.get(resource, 0), 
-                                         int(node_data.get("available resources", 1)))
+                # Get count from node data if available, otherwise use default 1
+                count = int(node_data.get('resource count', 1))
+                # Update the resource count (use max if resource appears multiple times)
+                if resource in resources:
+                    resources[resource] = max(resources[resource], count)
+                else:
+                    resources[resource] = count
+                
+        # Debug log the resources found
+        logging.info(f"Found {len(resources)} resources in process model: {resources}")
         return resources
+        
+    def find_critical_path(self) -> Tuple[List[str], float]:
+        """
+        Find the critical path through the process using average times.
+        
+        Returns:
+            Tuple of (critical path as list of node IDs, total duration)
+        """
+        # Create weighted graph using avg time as edge weight
+        weighted_graph = nx.DiGraph()
+        
+        # Add all nodes
+        for node_id, node_data in self.nodes.items():
+            weighted_graph.add_node(node_id, **node_data)
+            
+        # Add edges with negative weight (for longest path calculation)
+        for source, target, edge_data in self.graph.edges(data=True):
+            target_node = self.nodes.get(target, {})
+            # Use average time as weight, default to 0
+            weight = float(target_node.get("avg time", 0))
+            weighted_graph.add_edge(source, target, weight=-weight)
+            
+        # Find critical path as the longest path
+        start_nodes = self.get_start_nodes()
+        end_nodes = self.get_end_nodes()
+        
+        critical_path = []
+        max_duration = 0
+        
+        for start in start_nodes:
+            for end in end_nodes:
+                try:
+                    # Find shortest path with negative weights (equivalent to longest path)
+                    path = nx.shortest_path(weighted_graph, start, end, weight='weight')
+                    
+                    # Calculate path duration
+                    duration = sum(
+                        float(self.nodes.get(node, {}).get("avg time", 0))
+                        for node in path
+                    )
+                    
+                    if duration > max_duration:
+                        max_duration = duration
+                        critical_path = path
+                        
+                except nx.NetworkXNoPath:
+                    # No path exists between this start and end
+                    pass
+                    
+        return critical_path, max_duration
+        
+    def get_gateways(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Get all gateways in the process.
+        
+        Returns:
+            Dictionary mapping gateway IDs to their data
+        """
+        gateways = {}
+        
+        for node_id, node_data in self.nodes.items():
+            gateway_type = node_data.get("gateway")
+            if gateway_type:
+                gateways[node_id] = node_data
+                
+        return gateways

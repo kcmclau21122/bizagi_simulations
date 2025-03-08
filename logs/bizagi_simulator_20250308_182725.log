@@ -1,0 +1,214 @@
+2025-03-08 18:27:25,350 - root - INFO - Logging initialized
+2025-03-08 18:27:25,350 - root - INFO - Starting Bizagi Process Simulator
+2025-03-08 18:27:25,350 - root - INFO - NetworkX compatibility patch applied
+2025-03-08 18:27:25,350 - root - INFO - Settings loaded from bizagi_simulator_settings.json
+2025-03-08 18:27:25,350 - root - INFO - Configuration loaded
+2025-03-08 18:27:25,713 - root - INFO - Application UI initialized
+2025-03-08 18:27:49,143 - root - INFO - Loading data...
+2025-03-08 18:27:49,163 - root - INFO - Successfully loaded XPDL file: C:/Users/kcmclau.EVOFORGE/Repos/bizagi_simulations/Bizagi/5.5_1/5.5.13 Real Property-Monthly Reviews-Inclusive.xpdl
+2025-03-08 18:27:49,458 - root - INFO - Successfully loaded metrics from C:/Users/kcmclau.EVOFORGE/Repos/bizagi_simulations/Bizagi/simulation_metrics-inclusive.xlsx
+2025-03-08 18:27:49,458 - root - INFO - Loaded 8 rows with columns: name, type, resource, available resources, avg time, min time, max time, yes, no, arrival interval, max arrival count
+2025-03-08 18:27:49,458 - root - INFO - Preprocessed simulation metrics data
+2025-03-08 18:27:49,458 - root - INFO - Building process model from XPDL...
+2025-03-08 18:27:49,474 - root - INFO - Converting graph to ProcessModel...
+2025-03-08 18:27:49,474 - root - INFO - Built process model with 9 nodes and 11 links
+2025-03-08 18:27:49,474 - root - INFO - Found 1 start nodes: ['Monthly']
+2025-03-08 18:27:49,474 - root - INFO - Setting up simulation...
+2025-03-08 18:27:49,474 - root - INFO - Scheduling tokens...
+2025-03-08 18:27:49,474 - root - INFO - Scheduling 10 tokens with triangular distribution...
+2025-03-08 18:27:49,672 - root - INFO - Scheduling up to 10 tokens over 77041 available minutes
+2025-03-08 18:27:49,672 - root - INFO - Scheduled Token-1 to start at 2025-03-10 08:00:00.
+2025-03-08 18:27:49,672 - root - INFO - Scheduled Token-2 to start at 2025-03-10 08:05:53.121121.
+2025-03-08 18:27:49,672 - root - INFO - Scheduled Token-3 to start at 2025-03-10 08:12:07.606213.
+2025-03-08 18:27:49,672 - root - INFO - Scheduled Token-4 to start at 2025-03-10 08:17:37.651232.
+2025-03-08 18:27:49,672 - root - INFO - Scheduled Token-5 to start at 2025-03-10 08:23:09.658423.
+2025-03-08 18:27:49,672 - root - INFO - Scheduled Token-6 to start at 2025-03-10 08:28:28.342269.
+2025-03-08 18:27:49,672 - root - INFO - Scheduled Token-7 to start at 2025-03-10 08:33:18.115690.
+2025-03-08 18:27:49,672 - root - INFO - Scheduled Token-8 to start at 2025-03-10 08:38:05.587133.
+2025-03-08 18:27:49,672 - root - INFO - Scheduled Token-9 to start at 2025-03-10 08:43:50.464520.
+2025-03-08 18:27:49,672 - root - INFO - Scheduled Token-10 to start at 2025-03-10 08:50:07.972524.
+2025-03-08 18:27:49,672 - root - INFO - Scheduled 10 tokens. Running simulation...
+2025-03-08 18:27:49,672 - root - INFO - Starting simulation...
+2025-03-08 18:27:49,672 - root - INFO - Token Token-1 started task 'Monthly' at 2025-03-10 08:00:00, scheduled to end at 2025-03-10 08:00:00 (processing time: 0.00 min)
+2025-03-08 18:27:49,672 - root - INFO - Token Token-1 completed task 'Monthly' at 2025-03-10 08:00:00.
+2025-03-08 18:27:49,688 - root - INFO - Token Token-1 started task 'Review AM using Asset Change Tracker (5.5.13.1)' at 2025-03-10 08:00:00, scheduled to end at 2025-03-10 08:08:22.047617 (processing time: 8.37 min)
+2025-03-08 18:27:49,688 - root - INFO - Token Token-2 started task 'Monthly' at 2025-03-10 08:05:53.121121, scheduled to end at 2025-03-10 08:05:53.121121 (processing time: 0.00 min)
+2025-03-08 18:27:49,688 - root - INFO - Token Token-2 completed task 'Monthly' at 2025-03-10 08:05:53.121121.
+2025-03-08 18:27:49,688 - root - INFO - Token Token-2 waiting for resource 'Tech' at 2025-03-10 08:05:53.121121
+2025-03-08 18:27:49,688 - root - INFO - Token Token-1 completed task 'Review AM using Asset Change Tracker (5.5.13.1)' at 2025-03-10 08:08:22.047617.
+2025-03-08 18:27:49,688 - root - INFO - Token Token-2 released from wait queue for 'Tech'
+2025-03-08 18:27:49,688 - root - INFO - Token Token-2 waited 2.48 minutes for resource
+2025-03-08 18:27:49,688 - root - INFO - Token Token-2 started task 'Review AM using Asset Change Tracker (5.5.13.1)' at 2025-03-10 08:08:22.047617, scheduled to end at 2025-03-10 08:17:00.888230 (processing time: 8.65 min)
+2025-03-08 18:27:49,688 - root - INFO - Token Token-1 started task 'Complete /Accurate?' at 2025-03-10 08:08:22.047617, scheduled to end at 2025-03-10 08:08:22.047617 (processing time: 0.00 min)
+2025-03-08 18:27:49,688 - root - INFO - Token Token-1 completed task 'Complete /Accurate?' at 2025-03-10 08:08:22.047617.
+2025-03-08 18:27:49,688 - root - INFO - Token Token-1 waiting for resource 'Tech' at 2025-03-10 08:08:22.047617
+2025-03-08 18:27:49,688 - root - INFO - Token Token-3 started task 'Monthly' at 2025-03-10 08:12:07.606213, scheduled to end at 2025-03-10 08:12:07.606213 (processing time: 0.00 min)
+2025-03-08 18:27:49,688 - root - INFO - Token Token-3 completed task 'Monthly' at 2025-03-10 08:12:07.606213.
+2025-03-08 18:27:49,688 - root - INFO - Token Token-3 waiting for resource 'Tech' at 2025-03-10 08:12:07.606213
+2025-03-08 18:27:49,688 - root - INFO - Token Token-2 completed task 'Review AM using Asset Change Tracker (5.5.13.1)' at 2025-03-10 08:17:00.888230.
+2025-03-08 18:27:49,688 - root - INFO - Token Token-1 released from wait queue for 'Tech'
+2025-03-08 18:27:49,688 - root - INFO - Token Token-1 waited 8.65 minutes for resource
+2025-03-08 18:27:49,688 - root - INFO - Token Token-1 started task 'Note Accuracy in Asset Change Tracker (5.5.13.2)' at 2025-03-10 08:17:00.888230, scheduled to end at 2025-03-10 08:23:32.337803 (processing time: 6.52 min)
+2025-03-08 18:27:49,688 - root - INFO - Token Token-2 started task 'Complete /Accurate?' at 2025-03-10 08:17:00.888230, scheduled to end at 2025-03-10 08:17:00.888230 (processing time: 0.00 min)
+2025-03-08 18:27:49,688 - root - INFO - Token Token-2 completed task 'Complete /Accurate?' at 2025-03-10 08:17:00.888230.
+2025-03-08 18:27:49,688 - root - INFO - Token Token-2 waiting for resource 'Tech' at 2025-03-10 08:17:00.888230
+2025-03-08 18:27:49,688 - root - INFO - Token Token-4 started task 'Monthly' at 2025-03-10 08:17:37.651232, scheduled to end at 2025-03-10 08:17:37.651232 (processing time: 0.00 min)
+2025-03-08 18:27:49,688 - root - INFO - Token Token-4 completed task 'Monthly' at 2025-03-10 08:17:37.651232.
+2025-03-08 18:27:49,688 - root - INFO - Token Token-4 waiting for resource 'Tech' at 2025-03-10 08:17:37.651232
+2025-03-08 18:27:49,688 - root - INFO - Token Token-5 started task 'Monthly' at 2025-03-10 08:23:09.658423, scheduled to end at 2025-03-10 08:23:09.658423 (processing time: 0.00 min)
+2025-03-08 18:27:49,688 - root - INFO - Token Token-5 completed task 'Monthly' at 2025-03-10 08:23:09.658423.
+2025-03-08 18:27:49,688 - root - INFO - Token Token-5 waiting for resource 'Tech' at 2025-03-10 08:23:09.658423
+2025-03-08 18:27:49,688 - root - INFO - Token Token-1 completed task 'Note Accuracy in Asset Change Tracker (5.5.13.2)' at 2025-03-10 08:23:32.337803.
+2025-03-08 18:27:49,688 - root - INFO - Token Token-3 released from wait queue for 'Tech'
+2025-03-08 18:27:49,688 - root - INFO - Token Token-3 waited 11.41 minutes for resource
+2025-03-08 18:27:49,688 - root - INFO - Token Token-3 started task 'Review AM using Asset Change Tracker (5.5.13.1)' at 2025-03-10 08:23:32.337803, scheduled to end at 2025-03-10 08:32:00.377669 (processing time: 8.47 min)
+2025-03-08 18:27:49,688 - root - INFO - Token Token-1 started task 'Unknown' at 2025-03-10 08:23:32.337803, scheduled to end at 2025-03-10 08:23:32.337803 (processing time: 0.00 min)
+2025-03-08 18:27:49,688 - root - INFO - Token Token-1 completed task 'Unknown' at 2025-03-10 08:23:32.337803.
+2025-03-08 18:27:49,688 - root - INFO - Token Token-1 has completed the entire process at 2025-03-10 08:23:32.337803.
+2025-03-08 18:27:49,688 - root - INFO - Token Token-6 started task 'Monthly' at 2025-03-10 08:28:28.342269, scheduled to end at 2025-03-10 08:28:28.342269 (processing time: 0.00 min)
+2025-03-08 18:27:49,688 - root - INFO - Token Token-6 completed task 'Monthly' at 2025-03-10 08:28:28.342269.
+2025-03-08 18:27:49,688 - root - INFO - Token Token-6 waiting for resource 'Tech' at 2025-03-10 08:28:28.342269
+2025-03-08 18:27:49,688 - root - INFO - Token Token-3 completed task 'Review AM using Asset Change Tracker (5.5.13.1)' at 2025-03-10 08:32:00.377669.
+2025-03-08 18:27:49,688 - root - INFO - Token Token-2 released from wait queue for 'Tech'
+2025-03-08 18:27:49,688 - root - INFO - Token Token-2 waited 14.99 minutes for resource
+2025-03-08 18:27:49,688 - root - INFO - Token Token-2 started task 'Note Accuracy in Asset Change Tracker (5.5.13.2)' at 2025-03-10 08:32:00.377669, scheduled to end at 2025-03-10 08:36:16.055915 (processing time: 4.26 min)
+2025-03-08 18:27:49,688 - root - INFO - Token Token-3 started task 'Complete /Accurate?' at 2025-03-10 08:32:00.377669, scheduled to end at 2025-03-10 08:32:00.377669 (processing time: 0.00 min)
+2025-03-08 18:27:49,688 - root - INFO - Token Token-3 completed task 'Complete /Accurate?' at 2025-03-10 08:32:00.377669.
+2025-03-08 18:27:49,688 - root - INFO - Token Token-3 waiting for resource 'Tech' at 2025-03-10 08:32:00.377669
+2025-03-08 18:27:49,688 - root - INFO - Token Token-7 started task 'Monthly' at 2025-03-10 08:33:18.115690, scheduled to end at 2025-03-10 08:33:18.115690 (processing time: 0.00 min)
+2025-03-08 18:27:49,688 - root - INFO - Token Token-7 completed task 'Monthly' at 2025-03-10 08:33:18.115690.
+2025-03-08 18:27:49,688 - root - INFO - Token Token-7 waiting for resource 'Tech' at 2025-03-10 08:33:18.115690
+2025-03-08 18:27:49,688 - root - INFO - Token Token-2 completed task 'Note Accuracy in Asset Change Tracker (5.5.13.2)' at 2025-03-10 08:36:16.055915.
+2025-03-08 18:27:49,688 - root - INFO - Token Token-4 released from wait queue for 'Tech'
+2025-03-08 18:27:49,688 - root - INFO - Token Token-4 waited 18.64 minutes for resource
+2025-03-08 18:27:49,688 - root - INFO - Token Token-4 started task 'Review AM using Asset Change Tracker (5.5.13.1)' at 2025-03-10 08:36:16.055915, scheduled to end at 2025-03-10 08:45:11.842255 (processing time: 8.93 min)
+2025-03-08 18:27:49,688 - root - INFO - Token Token-2 started task 'Unknown' at 2025-03-10 08:36:16.055915, scheduled to end at 2025-03-10 08:36:16.055915 (processing time: 0.00 min)
+2025-03-08 18:27:49,688 - root - INFO - Token Token-2 completed task 'Unknown' at 2025-03-10 08:36:16.055915.
+2025-03-08 18:27:49,688 - root - INFO - Token Token-2 has completed the entire process at 2025-03-10 08:36:16.055915.
+2025-03-08 18:27:49,688 - root - INFO - Token Token-8 started task 'Monthly' at 2025-03-10 08:38:05.587133, scheduled to end at 2025-03-10 08:38:05.587133 (processing time: 0.00 min)
+2025-03-08 18:27:49,688 - root - INFO - Token Token-8 completed task 'Monthly' at 2025-03-10 08:38:05.587133.
+2025-03-08 18:27:49,688 - root - INFO - Token Token-8 waiting for resource 'Tech' at 2025-03-10 08:38:05.587133
+2025-03-08 18:27:49,704 - root - INFO - Token Token-9 started task 'Monthly' at 2025-03-10 08:43:50.464520, scheduled to end at 2025-03-10 08:43:50.464520 (processing time: 0.00 min)
+2025-03-08 18:27:49,704 - root - INFO - Token Token-9 completed task 'Monthly' at 2025-03-10 08:43:50.464520.
+2025-03-08 18:27:49,704 - root - INFO - Token Token-9 waiting for resource 'Tech' at 2025-03-10 08:43:50.464520
+2025-03-08 18:27:49,704 - root - INFO - Token Token-4 completed task 'Review AM using Asset Change Tracker (5.5.13.1)' at 2025-03-10 08:45:11.842255.
+2025-03-08 18:27:49,704 - root - INFO - Token Token-5 released from wait queue for 'Tech'
+2025-03-08 18:27:49,704 - root - INFO - Token Token-5 waited 22.04 minutes for resource
+2025-03-08 18:27:49,704 - root - INFO - Token Token-5 started task 'Review AM using Asset Change Tracker (5.5.13.1)' at 2025-03-10 08:45:11.842255, scheduled to end at 2025-03-10 08:51:41.944657 (processing time: 6.50 min)
+2025-03-08 18:27:49,704 - root - INFO - Token Token-4 started task 'Complete /Accurate?' at 2025-03-10 08:45:11.842255, scheduled to end at 2025-03-10 08:45:11.842255 (processing time: 0.00 min)
+2025-03-08 18:27:49,704 - root - INFO - Token Token-4 completed task 'Complete /Accurate?' at 2025-03-10 08:45:11.842255.
+2025-03-08 18:27:49,704 - root - INFO - Token Token-4 waiting for resource 'Tech' at 2025-03-10 08:45:11.842255
+2025-03-08 18:27:49,704 - root - INFO - Token Token-10 started task 'Monthly' at 2025-03-10 08:50:07.972524, scheduled to end at 2025-03-10 08:50:07.972524 (processing time: 0.00 min)
+2025-03-08 18:27:49,704 - root - INFO - Token Token-10 completed task 'Monthly' at 2025-03-10 08:50:07.972524.
+2025-03-08 18:27:49,704 - root - INFO - Token Token-10 waiting for resource 'Tech' at 2025-03-10 08:50:07.972524
+2025-03-08 18:27:49,704 - root - INFO - Token Token-5 completed task 'Review AM using Asset Change Tracker (5.5.13.1)' at 2025-03-10 08:51:41.944657.
+2025-03-08 18:27:49,704 - root - INFO - Token Token-6 released from wait queue for 'Tech'
+2025-03-08 18:27:49,704 - root - INFO - Token Token-6 waited 23.23 minutes for resource
+2025-03-08 18:27:49,704 - root - INFO - Token Token-6 started task 'Review AM using Asset Change Tracker (5.5.13.1)' at 2025-03-10 08:51:41.944657, scheduled to end at 2025-03-10 09:00:17.214150 (processing time: 8.59 min)
+2025-03-08 18:27:49,704 - root - INFO - Token Token-5 started task 'Complete /Accurate?' at 2025-03-10 08:51:41.944657, scheduled to end at 2025-03-10 08:51:41.944657 (processing time: 0.00 min)
+2025-03-08 18:27:49,704 - root - INFO - Token Token-5 completed task 'Complete /Accurate?' at 2025-03-10 08:51:41.944657.
+2025-03-08 18:27:49,704 - root - INFO - Token Token-5 waiting for resource 'Tech' at 2025-03-10 08:51:41.944657
+2025-03-08 18:27:49,704 - root - INFO - Token Token-6 completed task 'Review AM using Asset Change Tracker (5.5.13.1)' at 2025-03-10 09:00:17.214150.
+2025-03-08 18:27:49,704 - root - INFO - Token Token-3 released from wait queue for 'Tech'
+2025-03-08 18:27:49,704 - root - INFO - Token Token-3 waited 28.28 minutes for resource
+2025-03-08 18:27:49,704 - root - INFO - Token Token-3 started task 'Note Accuracy in Asset Change Tracker (5.5.13.2)' at 2025-03-10 09:00:17.214150, scheduled to end at 2025-03-10 09:06:20.070896 (processing time: 6.05 min)
+2025-03-08 18:27:49,704 - root - INFO - Token Token-6 started task 'Complete /Accurate?' at 2025-03-10 09:00:17.214150, scheduled to end at 2025-03-10 09:00:17.214150 (processing time: 0.00 min)
+2025-03-08 18:27:49,704 - root - INFO - Token Token-6 completed task 'Complete /Accurate?' at 2025-03-10 09:00:17.214150.
+2025-03-08 18:27:49,704 - root - INFO - Token Token-6 waiting for resource 'Tech' at 2025-03-10 09:00:17.214150
+2025-03-08 18:27:49,704 - root - INFO - Token Token-3 completed task 'Note Accuracy in Asset Change Tracker (5.5.13.2)' at 2025-03-10 09:06:20.070896.
+2025-03-08 18:27:49,704 - root - INFO - Token Token-7 released from wait queue for 'Tech'
+2025-03-08 18:27:49,704 - root - INFO - Token Token-7 waited 33.03 minutes for resource
+2025-03-08 18:27:49,704 - root - INFO - Token Token-7 started task 'Review AM using Asset Change Tracker (5.5.13.1)' at 2025-03-10 09:06:20.070896, scheduled to end at 2025-03-10 09:12:57.658924 (processing time: 6.63 min)
+2025-03-08 18:27:49,704 - root - INFO - Token Token-3 started task 'Unknown' at 2025-03-10 09:06:20.070896, scheduled to end at 2025-03-10 09:06:20.070896 (processing time: 0.00 min)
+2025-03-08 18:27:49,704 - root - INFO - Token Token-3 completed task 'Unknown' at 2025-03-10 09:06:20.070896.
+2025-03-08 18:27:49,704 - root - INFO - Token Token-3 has completed the entire process at 2025-03-10 09:06:20.070896.
+2025-03-08 18:27:49,704 - root - INFO - Token Token-7 completed task 'Review AM using Asset Change Tracker (5.5.13.1)' at 2025-03-10 09:12:57.658924.
+2025-03-08 18:27:49,704 - root - INFO - Token Token-8 released from wait queue for 'Tech'
+2025-03-08 18:27:49,704 - root - INFO - Token Token-8 waited 34.87 minutes for resource
+2025-03-08 18:27:49,704 - root - INFO - Token Token-8 started task 'Review AM using Asset Change Tracker (5.5.13.1)' at 2025-03-10 09:12:57.658924, scheduled to end at 2025-03-10 09:22:05.960484 (processing time: 9.14 min)
+2025-03-08 18:27:49,704 - root - INFO - Token Token-7 started task 'Complete /Accurate?' at 2025-03-10 09:12:57.658924, scheduled to end at 2025-03-10 09:12:57.658924 (processing time: 0.00 min)
+2025-03-08 18:27:49,704 - root - INFO - Token Token-7 completed task 'Complete /Accurate?' at 2025-03-10 09:12:57.658924.
+2025-03-08 18:27:49,704 - root - INFO - Token Token-7 waiting for resource 'Tech' at 2025-03-10 09:12:57.658924
+2025-03-08 18:27:49,704 - root - INFO - Token Token-8 completed task 'Review AM using Asset Change Tracker (5.5.13.1)' at 2025-03-10 09:22:05.960484.
+2025-03-08 18:27:49,704 - root - INFO - Token Token-9 released from wait queue for 'Tech'
+2025-03-08 18:27:49,704 - root - INFO - Token Token-9 waited 38.26 minutes for resource
+2025-03-08 18:27:49,704 - root - INFO - Token Token-9 started task 'Review AM using Asset Change Tracker (5.5.13.1)' at 2025-03-10 09:22:05.960484, scheduled to end at 2025-03-10 09:31:10.766418 (processing time: 9.08 min)
+2025-03-08 18:27:49,704 - root - INFO - Token Token-8 started task 'Complete /Accurate?' at 2025-03-10 09:22:05.960484, scheduled to end at 2025-03-10 09:22:05.960484 (processing time: 0.00 min)
+2025-03-08 18:27:49,721 - root - INFO - Token Token-8 completed task 'Complete /Accurate?' at 2025-03-10 09:22:05.960484.
+2025-03-08 18:27:49,722 - root - INFO - Token Token-8 waiting for resource 'Tech' at 2025-03-10 09:22:05.960484
+2025-03-08 18:27:49,722 - root - INFO - Token Token-9 completed task 'Review AM using Asset Change Tracker (5.5.13.1)' at 2025-03-10 09:31:10.766418.
+2025-03-08 18:27:49,722 - root - INFO - Token Token-4 released from wait queue for 'Tech'
+2025-03-08 18:27:49,723 - root - INFO - Token Token-4 waited 45.98 minutes for resource
+2025-03-08 18:27:49,723 - root - INFO - Token Token-4 started task 'Work with REO RPO to Correct (5.5.13.3)' at 2025-03-10 09:31:10.766418, scheduled to end at 2025-03-10 10:54:03.646215 (processing time: 82.88 min)
+2025-03-08 18:27:49,723 - root - INFO - Token Token-9 started task 'Complete /Accurate?' at 2025-03-10 09:31:10.766418, scheduled to end at 2025-03-10 09:31:10.766418 (processing time: 0.00 min)
+2025-03-08 18:27:49,723 - root - INFO - Token Token-9 completed task 'Complete /Accurate?' at 2025-03-10 09:31:10.766418.
+2025-03-08 18:27:49,724 - root - INFO - Token Token-9 waiting for resource 'Tech' at 2025-03-10 09:31:10.766418
+2025-03-08 18:27:49,724 - root - INFO - Token Token-4 completed task 'Work with REO RPO to Correct (5.5.13.3)' at 2025-03-10 10:54:03.646215.
+2025-03-08 18:27:49,724 - root - INFO - Token Token-10 released from wait queue for 'Tech'
+2025-03-08 18:27:49,725 - root - INFO - Token Token-10 waited 123.93 minutes for resource
+2025-03-08 18:27:49,725 - root - INFO - Token Token-10 started task 'Review AM using Asset Change Tracker (5.5.13.1)' at 2025-03-10 10:54:03.646215, scheduled to end at 2025-03-10 11:03:14.815426 (processing time: 9.19 min)
+2025-03-08 18:27:49,725 - root - INFO - Token Token-4 started task 'Create Journal Entries?' at 2025-03-10 10:54:03.646215, scheduled to end at 2025-03-10 10:54:03.646215 (processing time: 0.00 min)
+2025-03-08 18:27:49,726 - root - INFO - Token Token-4 completed task 'Create Journal Entries?' at 2025-03-10 10:54:03.646215.
+2025-03-08 18:27:49,726 - root - WARNING - No probability found for condition Post, using default 0.5
+2025-03-08 18:27:49,726 - root - WARNING - No probability found for condition Path 3, using default 0.5
+2025-03-08 18:27:49,726 - root - INFO - Token Token-4 waiting for resource 'Tech' at 2025-03-10 10:54:03.646215
+2025-03-08 18:27:49,727 - root - INFO - Token Token-4 started task 'Inclusive Path 3' at 2025-03-10 10:54:03.646215, scheduled to end at 2025-03-10 10:54:54.220414 (processing time: 0.84 min)
+2025-03-08 18:27:49,727 - root - INFO - Token Token-4 completed task 'Inclusive Path 3' at 2025-03-10 10:54:54.220414.
+2025-03-08 18:27:49,728 - root - INFO - Token Token-4 started task 'Unknown' at 2025-03-10 10:54:54.220414, scheduled to end at 2025-03-10 10:54:54.220414 (processing time: 0.00 min)
+2025-03-08 18:27:49,728 - root - INFO - Token Token-4 completed task 'Unknown' at 2025-03-10 10:54:54.220414.
+2025-03-08 18:27:49,728 - root - INFO - Token Token-4 has completed the entire process at 2025-03-10 10:54:54.220414.
+2025-03-08 18:27:49,728 - root - INFO - Token Token-10 completed task 'Review AM using Asset Change Tracker (5.5.13.1)' at 2025-03-10 11:03:14.815426.
+2025-03-08 18:27:49,729 - root - INFO - Token Token-5 released from wait queue for 'Tech'
+2025-03-08 18:27:49,729 - root - INFO - Token Token-5 waited 131.55 minutes for resource
+2025-03-08 18:27:49,731 - root - INFO - Token Token-5 started task 'Note Accuracy in Asset Change Tracker (5.5.13.2)' at 2025-03-10 11:03:14.815426, scheduled to end at 2025-03-10 11:09:58.722576 (processing time: 6.73 min)
+2025-03-08 18:27:49,736 - root - INFO - Token Token-10 started task 'Complete /Accurate?' at 2025-03-10 11:03:14.815426, scheduled to end at 2025-03-10 11:03:14.815426 (processing time: 0.00 min)
+2025-03-08 18:27:49,736 - root - INFO - Token Token-10 completed task 'Complete /Accurate?' at 2025-03-10 11:03:14.815426.
+2025-03-08 18:27:49,741 - root - INFO - Token Token-10 waiting for resource 'Tech' at 2025-03-10 11:03:14.815426
+2025-03-08 18:27:49,742 - root - INFO - Token Token-5 completed task 'Note Accuracy in Asset Change Tracker (5.5.13.2)' at 2025-03-10 11:09:58.722576.
+2025-03-08 18:27:49,743 - root - INFO - Token Token-6 released from wait queue for 'Tech'
+2025-03-08 18:27:49,743 - root - INFO - Token Token-6 waited 129.69 minutes for resource
+2025-03-08 18:27:49,744 - root - INFO - Token Token-6 started task 'Note Accuracy in Asset Change Tracker (5.5.13.2)' at 2025-03-10 11:09:58.722576, scheduled to end at 2025-03-10 11:13:49.274087 (processing time: 3.84 min)
+2025-03-08 18:27:49,744 - root - INFO - Token Token-5 started task 'Unknown' at 2025-03-10 11:09:58.722576, scheduled to end at 2025-03-10 11:09:58.722576 (processing time: 0.00 min)
+2025-03-08 18:27:49,745 - root - INFO - Token Token-5 completed task 'Unknown' at 2025-03-10 11:09:58.722576.
+2025-03-08 18:27:49,745 - root - INFO - Token Token-5 has completed the entire process at 2025-03-10 11:09:58.722576.
+2025-03-08 18:27:49,746 - root - INFO - Token Token-6 completed task 'Note Accuracy in Asset Change Tracker (5.5.13.2)' at 2025-03-10 11:13:49.274087.
+2025-03-08 18:27:49,746 - root - INFO - Token Token-7 released from wait queue for 'Tech'
+2025-03-08 18:27:49,747 - root - INFO - Token Token-7 waited 120.86 minutes for resource
+2025-03-08 18:27:49,747 - root - INFO - Token Token-7 started task 'Work with REO RPO to Correct (5.5.13.3)' at 2025-03-10 11:13:49.274087, scheduled to end at 2025-03-10 13:11:04.633782 (processing time: 117.26 min)
+2025-03-08 18:27:49,747 - root - INFO - Token Token-6 started task 'Unknown' at 2025-03-10 11:13:49.274087, scheduled to end at 2025-03-10 11:13:49.274087 (processing time: 0.00 min)
+2025-03-08 18:27:49,748 - root - INFO - Token Token-6 completed task 'Unknown' at 2025-03-10 11:13:49.274087.
+2025-03-08 18:27:49,749 - root - INFO - Token Token-6 has completed the entire process at 2025-03-10 11:13:49.274087.
+2025-03-08 18:27:49,750 - root - INFO - Token Token-7 completed task 'Work with REO RPO to Correct (5.5.13.3)' at 2025-03-10 13:11:04.633782.
+2025-03-08 18:27:49,751 - root - INFO - Token Token-8 released from wait queue for 'Tech'
+2025-03-08 18:27:49,752 - root - INFO - Token Token-8 waited 228.98 minutes for resource
+2025-03-08 18:27:49,753 - root - INFO - Token Token-8 started task 'Note Accuracy in Asset Change Tracker (5.5.13.2)' at 2025-03-10 13:11:04.633782, scheduled to end at 2025-03-10 13:14:54.037786 (processing time: 3.82 min)
+2025-03-08 18:27:49,753 - root - INFO - Token Token-7 started task 'Create Journal Entries?' at 2025-03-10 13:11:04.633782, scheduled to end at 2025-03-10 13:11:04.633782 (processing time: 0.00 min)
+2025-03-08 18:27:49,754 - root - INFO - Token Token-7 completed task 'Create Journal Entries?' at 2025-03-10 13:11:04.633782.
+2025-03-08 18:27:49,754 - root - WARNING - No probability found for condition Post, using default 0.5
+2025-03-08 18:27:49,755 - root - WARNING - No probability found for condition Path 3, using default 0.5
+2025-03-08 18:27:49,755 - root - INFO - Token Token-7 waiting for resource 'Tech' at 2025-03-10 13:11:04.633782
+2025-03-08 18:27:49,756 - root - INFO - Token Token-8 completed task 'Note Accuracy in Asset Change Tracker (5.5.13.2)' at 2025-03-10 13:14:54.037786.
+2025-03-08 18:27:49,756 - root - INFO - Token Token-9 released from wait queue for 'Tech'
+2025-03-08 18:27:49,757 - root - INFO - Token Token-9 waited 223.72 minutes for resource
+2025-03-08 18:27:49,757 - root - INFO - Token Token-9 started task 'Note Accuracy in Asset Change Tracker (5.5.13.2)' at 2025-03-10 13:14:54.037786, scheduled to end at 2025-03-10 13:20:36.015056 (processing time: 5.70 min)
+2025-03-08 18:27:49,757 - root - INFO - Token Token-8 started task 'Unknown' at 2025-03-10 13:14:54.037786, scheduled to end at 2025-03-10 13:14:54.037786 (processing time: 0.00 min)
+2025-03-08 18:27:49,758 - root - INFO - Token Token-8 completed task 'Unknown' at 2025-03-10 13:14:54.037786.
+2025-03-08 18:27:49,758 - root - INFO - Token Token-8 has completed the entire process at 2025-03-10 13:14:54.037786.
+2025-03-08 18:27:49,759 - root - INFO - Token Token-9 completed task 'Note Accuracy in Asset Change Tracker (5.5.13.2)' at 2025-03-10 13:20:36.015056.
+2025-03-08 18:27:49,759 - root - INFO - Token Token-4 released from wait queue for 'Tech'
+2025-03-08 18:27:49,759 - root - INFO - Token Token-9 started task 'Unknown' at 2025-03-10 13:20:36.015056, scheduled to end at 2025-03-10 13:20:36.015056 (processing time: 0.00 min)
+2025-03-08 18:27:49,760 - root - INFO - Token Token-9 completed task 'Unknown' at 2025-03-10 13:20:36.015056.
+2025-03-08 18:27:49,760 - root - INFO - Token Token-9 has completed the entire process at 2025-03-10 13:20:36.015056.
+2025-03-08 18:27:49,761 - root - INFO - Simulation complete. Collecting results...
+2025-03-08 18:27:49,764 - root - INFO - Processing results...
+2025-03-08 18:27:49,769 - root - ERROR - Simulation error: No module named 'xlsxwriter'
+Traceback (most recent call last):
+  File "c:\Users\kcmclau.EVOFORGE\Repos\bizagi_simulations\core\simulation_runner.py", line 206, in _run_simulation
+    exporter.export_to_excel(results, results_path, simulation_params)
+  File "c:\Users\kcmclau.EVOFORGE\Repos\bizagi_simulations\data\data_processing.py", line 107, in export_to_excel
+    with pd.ExcelWriter(file_path, engine='xlsxwriter') as writer:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\kcmclau.EVOFORGE\AppData\Local\anaconda3\envs\bizagi\Lib\site-packages\pandas\io\excel\_xlsxwriter.py", line 197, in __init__
+    from xlsxwriter import Workbook
+ModuleNotFoundError: No module named 'xlsxwriter'
+2025-03-08 18:27:58,718 - root - INFO - Application exited normally

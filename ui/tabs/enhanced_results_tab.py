@@ -4,6 +4,8 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from datetime import timedelta
 import subprocess
 import platform
@@ -187,11 +189,12 @@ class EnhancedResultsTab:
         buttons_frame.pack(fill="x", padx=10, pady=5)
         
         # Add export button
-        ttk.Button(
+        self.export_excel_btn = ttk.Button(
             buttons_frame,
             text="Export to Excel",
             command=self.export_to_excel
-        ).pack(side="right", padx=5)
+        )
+        self.export_excel_btn.pack(side="right", padx=5)
         
         # Add view visualization buttons (initially disabled)
         self.resource_btn = ttk.Button(
@@ -226,6 +229,17 @@ class EnhancedResultsTab:
         )
         self.duration_btn.pack(side="left", padx=5)
         
+    def _set_button_states(self, state):
+        """Set the state of all results buttons."""
+        for btn in [
+            self.resource_btn, 
+            self.activity_btn, 
+            self.token_btn, 
+            self.duration_btn,
+            self.export_excel_btn
+        ]:
+            btn.config(state=state)
+            
     def _on_tree_focus(self, event):
         """Handle treeview focus events to ensure scrollbars work."""
         # When the treeview gets focus, ensure scrollbars are visible
@@ -312,9 +326,6 @@ class EnhancedResultsTab:
         # Debug print to verify the paths
         print("Visualization paths received:", self.visualization_paths)
         
-        # Update the visualization button states based on available paths
-        self.update_button_states()
-        
         # Update summary text
         self._update_summary_text(
             activity_processing_times, 
@@ -333,58 +344,54 @@ class EnhancedResultsTab:
         
         # Make sure scrollbars update after adding data
         self._update_scrollbar_visibility()
-    
-    def update_button_states(self):
-        """Update the state of visualization buttons based on available files."""
-        # Enable/disable buttons based on available visualization files
-        if "resource_utilization" in self.visualization_paths:
-            self.resource_btn.config(state="normal")
-            print("Resource utilization button enabled")
-        else:
-            self.resource_btn.config(state="disabled")
-            
-        if "activity_times" in self.visualization_paths:
-            self.activity_btn.config(state="normal")
-            print("Activity times button enabled")
-        else:
-            self.activity_btn.config(state="disabled")
-            
-        if "token_histogram" in self.visualization_paths:
-            self.token_btn.config(state="normal")
-            print("Token histogram button enabled")
-        else:
-            self.token_btn.config(state="disabled")
-            
-        if "duration_vs_wait" in self.visualization_paths:
-            self.duration_btn.config(state="normal")
-            print("Duration vs wait button enabled")
-        else:
-            self.duration_btn.config(state="disabled")
+        
+        # Enable all buttons when results are available
+        self._set_button_states("normal")
     
     def open_visualization(self, viz_type: str) -> None:
         """
         Open a visualization file using the system's default application.
+        If the file doesn't exist, create it on demand.
         
         Args:
             viz_type: Type of visualization to open
         """
-        if viz_type not in self.visualization_paths:
-            messagebox.showinfo(
-                "Visualization Not Available", 
-                f"The {viz_type} visualization is not available."
-            )
+        # If we have a file path and it exists, open it
+        if viz_type in self.visualization_paths and os.path.exists(self.visualization_paths[viz_type]):
+            self._open_file(self.visualization_paths[viz_type])
             return
             
-        file_path = self.visualization_paths[viz_type]
-        print(f"Opening visualization: {file_path}")
+        # Otherwise generate the visualization on demand
+        if not self.latest_results:
+            messagebox.showinfo("No Data", "No simulation results available for visualization.")
+            return
+            
+        try:
+            # Generate the visualization based on type
+            file_path = self._generate_visualization(viz_type)
+            
+            if file_path:
+                # Store the path and open the file
+                self.visualization_paths[viz_type] = file_path
+                self._open_file(file_path)
+            else:
+                messagebox.showinfo(
+                    "Visualization Failed", 
+                    f"Could not generate the {viz_type} visualization."
+                )
+        except Exception as e:
+            messagebox.showerror(
+                "Visualization Error", 
+                f"An error occurred while creating visualization: {str(e)}"
+            )
+    
+    def _open_file(self, file_path: str) -> None:
+        """
+        Open a file with the system's default application.
         
-        if not os.path.exists(file_path):
-            messagebox.showinfo(
-                "File Not Found", 
-                f"The visualization file was not found at {file_path}."
-            )
-            return
-            
+        Args:
+            file_path: Path to the file to open
+        """
         try:
             # Open the file with the default application based on the operating system
             if platform.system() == 'Windows':
@@ -402,6 +409,288 @@ class EnhancedResultsTab:
                 "Error Opening File", 
                 f"An error occurred while trying to open the file: {str(e)}"
             )
+            
+    def _generate_visualization(self, viz_type: str) -> Optional[str]:
+        """
+        Generate a visualization file based on the type and return the path.
+        
+        Args:
+            viz_type: Type of visualization to generate
+            
+        Returns:
+            Path to the generated file or None if generation failed
+        """
+        # Get base filename from XPDL file
+        base_filename = os.path.splitext(
+            os.path.basename(self.config.get("xpdl_file_path", "simulation"))
+        )[0]
+        
+        # Create output directory if it doesn't exist
+        output_dir = "visualizations"
+        os.makedirs(output_dir, exist_ok=True)
+        
+        # Generate the appropriate visualization based on type
+        if viz_type == "resource_utilization":
+            return self._create_resource_utilization_chart(os.path.join(output_dir, f"{base_filename}_resource_utilization.png"))
+        elif viz_type == "activity_times":
+            return self._create_activity_times_chart(os.path.join(output_dir, f"{base_filename}_activity_times.png"))
+        elif viz_type == "token_histogram":
+            return self._create_token_histogram(os.path.join(output_dir, f"{base_filename}_token_histogram.png"))
+        elif viz_type == "duration_vs_wait":
+            return self._create_duration_wait_scatter(os.path.join(output_dir, f"{base_filename}_duration_vs_wait.png"))
+        
+        return None
+        
+    def _create_resource_utilization_chart(self, output_path: str) -> str:
+        """
+        Create resource utilization chart and save to file.
+        
+        Args:
+            output_path: Path to save the chart to
+            
+        Returns:
+            Path to the saved chart file
+        """
+        resource_utilization = self.latest_results.get("resource_utilization", {})
+        
+        if not resource_utilization:
+            raise ValueError("No resource utilization data available")
+            
+        # Create figure and axes
+        plt.figure(figsize=(10, 6))
+        
+        # Sort resources by utilization
+        resources = []
+        utils = []
+        for res, util in sorted(resource_utilization.items(), key=lambda x: x[1], reverse=True):
+            resources.append(res)
+            utils.append(util)
+            
+        # Create the bar chart
+        bars = plt.bar(resources, utils, color=['green' if u < 80 else 'orange' if u < 95 else 'red' for u in utils])
+        
+        # Add labels
+        plt.title('Resource Utilization')
+        plt.xlabel('Resource')
+        plt.ylabel('Utilization (%)')
+        plt.ylim(0, 100)
+        plt.grid(axis='y', linestyle='--', alpha=0.7)
+        
+        # Add value labels on bars
+        for bar in bars:
+            height = bar.get_height()
+            plt.text(
+                bar.get_x() + bar.get_width()/2., height + 1,
+                f'{height:.1f}%',
+                ha='center', va='bottom'
+            )
+            
+        # Rotate x-axis labels for better readability
+        plt.xticks(rotation=45, ha='right')
+        
+        # Adjust layout and save
+        plt.tight_layout()
+        plt.savefig(output_path, dpi=300)
+        plt.close()
+        
+        return output_path
+        
+    def _create_activity_times_chart(self, output_path: str) -> str:
+        """
+        Create activity times chart and save to file.
+        
+        Args:
+            output_path: Path to save the chart to
+            
+        Returns:
+            Path to the saved chart file
+        """
+        activity_times = self.latest_results.get("activity_processing_times", {})
+        
+        if not activity_times:
+            raise ValueError("No activity processing times data available")
+            
+        # Prepare data
+        activities = []
+        processing_times = []
+        wait_times = []
+        
+        for activity, data in activity_times.items():
+            if data.get("durations") and data.get("type") != "Gateway":
+                durations = data.get("durations", [])
+                avg_processing_time = sum(data.get("processing_times", durations)) / len(data.get("processing_times", durations))
+                avg_wait_time = sum(data.get("wait_times", [0])) / len(data.get("wait_times", [1])) if data.get("wait_times") else 0
+                
+                activities.append(activity)
+                processing_times.append(avg_processing_time)
+                wait_times.append(avg_wait_time)
+                
+        # Sort by total time and get top 10
+        if activities:
+            sorted_data = sorted(
+                zip(activities, processing_times, wait_times),
+                key=lambda x: x[1] + x[2],
+                reverse=True
+            )
+            
+            # Take top 10
+            sorted_data = sorted_data[:10]
+            activities, processing_times, wait_times = zip(*sorted_data)
+            
+        # Create figure and axes
+        plt.figure(figsize=(12, 6))
+        
+        # Create stacked bars
+        x = range(len(activities))
+        plt.bar(x, processing_times, label='Processing Time', color='blue')
+        plt.bar(x, wait_times, bottom=processing_times, label='Wait Time', color='orange')
+        
+        # Add labels
+        plt.title('Top Activities by Time')
+        plt.xlabel('Activity')
+        plt.ylabel('Time (minutes)')
+        plt.xticks(x, activities, rotation=45, ha='right')
+        plt.legend()
+        
+        # Adjust layout and save
+        plt.tight_layout()
+        plt.savefig(output_path, dpi=300)
+        plt.close()
+        
+        return output_path
+        
+    def _create_token_histogram(self, output_path: str) -> str:
+        """
+        Create token duration histogram chart and save to file.
+        
+        Args:
+            output_path: Path to save the chart to
+            
+        Returns:
+            Path to the saved chart file
+        """
+        completed_tokens = self.latest_results.get("completed_tokens", [])
+        
+        if not completed_tokens:
+            raise ValueError("No completed tokens data available")
+            
+        # Calculate durations
+        process_durations = [
+            (token['end_time'] - token['start_time']).total_seconds() / 60 
+            for token in completed_tokens
+        ]
+        
+        # Create figure and axes
+        plt.figure(figsize=(10, 6))
+        
+        # Create histogram
+        plt.hist(process_durations, bins=20, alpha=0.7, color='blue')
+        
+        # Add mean and median lines
+        mean_duration = sum(process_durations) / len(process_durations)
+        median_duration = sorted(process_durations)[len(process_durations) // 2]
+        
+        plt.axvline(mean_duration, color='red', linestyle='--')
+        plt.axvline(median_duration, color='green', linestyle='--')
+        
+        plt.text(
+            mean_duration, plt.ylim()[1] * 0.9, 
+            f'Mean: {mean_duration:.1f}m', 
+            color='red', ha='right', va='top'
+        )
+        
+        plt.text(
+            median_duration, plt.ylim()[1] * 0.8, 
+            f'Median: {median_duration:.1f}m', 
+            color='green', ha='right', va='top'
+        )
+        
+        # Add labels
+        plt.title('Process Duration Distribution')
+        plt.xlabel('Duration (minutes)')
+        plt.ylabel('Frequency')
+        plt.grid(linestyle='--', alpha=0.7)
+        
+        # Adjust layout and save
+        plt.tight_layout()
+        plt.savefig(output_path, dpi=300)
+        plt.close()
+        
+        return output_path
+        
+    def _create_duration_wait_scatter(self, output_path: str) -> str:
+        """
+        Create duration vs wait time scatter plot and save to file.
+        
+        Args:
+            output_path: Path to save the chart to
+            
+        Returns:
+            Path to the saved chart file
+        """
+        completed_tokens = self.latest_results.get("completed_tokens", [])
+        
+        if not completed_tokens:
+            raise ValueError("No completed tokens data available")
+            
+        # Calculate durations and wait times
+        process_durations = [
+            (token['end_time'] - token['start_time']).total_seconds() / 60 
+            for token in completed_tokens
+        ]
+        wait_times = [token['total_wait_time'] for token in completed_tokens]
+        
+        # Create figure and axes
+        plt.figure(figsize=(10, 6))
+        
+        # Create scatter plot
+        colors = [w/d*100 if d > 0 else 0 for w, d in zip(wait_times, process_durations)]
+        scatter = plt.scatter(
+            process_durations, 
+            wait_times, 
+            alpha=0.7, 
+            c=colors,
+            cmap='YlOrRd'
+        )
+        
+        # Add a colorbar
+        cbar = plt.colorbar(scatter)
+        cbar.set_label('Wait Time %')
+        
+        # Add a trend line
+        if len(process_durations) > 1:
+            coeffs = np.polyfit(process_durations, wait_times, 1)
+            trend_line = np.poly1d(coeffs)
+            
+            # Calculate correlation
+            correlation = np.corrcoef(process_durations, wait_times)[0, 1]
+            
+            # Add line to plot
+            x_range = np.linspace(min(process_durations), max(process_durations), 100)
+            plt.plot(x_range, trend_line(x_range), 'r--', alpha=0.7)
+            
+            # Add correlation text
+            plt.text(
+                0.05, 0.95, 
+                f'Correlation: {correlation:.2f}',
+                transform=plt.gca().transAxes,
+                fontsize=10,
+                verticalalignment='top',
+                bbox=dict(boxstyle='round', facecolor='white', alpha=0.7)
+            )
+            
+        # Add labels
+        plt.title('Process Duration vs Wait Time')
+        plt.xlabel('Duration (minutes)')
+        plt.ylabel('Wait Time (minutes)')
+        plt.grid(linestyle='--', alpha=0.7)
+        
+        # Adjust layout and save
+        plt.tight_layout()
+        plt.savefig(output_path, dpi=300)
+        plt.close()
+        
+        return output_path
     
     def _update_summary_text(self, 
                            activity_processing_times: Dict[str, Dict[str, Any]],
@@ -454,10 +743,8 @@ class EnhancedResultsTab:
             if len(resource_utilization) > 5:
                 summary_text += f"  ... and {len(resource_utilization) - 5} more resources\n"
             
-            # Add information about visualization files
-            if self.visualization_paths:
-                summary_text += "\nVISUALIZATION FILES:\n"
-                summary_text += "Use the buttons below to view detailed visualizations.\n"
+            # Add information about visualizations
+            summary_text += "\nUSE BUTTONS BELOW TO VIEW DETAILED VISUALIZATIONS.\n"
         
         # Update summary text
         self.summary_text.config(state="normal")

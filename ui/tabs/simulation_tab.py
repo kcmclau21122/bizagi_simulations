@@ -13,7 +13,7 @@ from utils.config import ConfigManager
 class SimulationTab:
     """
     Tab for configuring simulation parameters.
-    Allows setting simulation days, target times, and other parameters.
+    Allows setting simulation days, target times, token counts, arrival intervals, and other parameters.
     """
     
     def __init__(self, parent: ttk.Notebook, config: ConfigManager):
@@ -35,6 +35,12 @@ class SimulationTab:
         self.target_avg_time = tk.DoubleVar(value=0.0)  # 0 means no target
         self.random_seed = tk.IntVar(value=10)
         
+        # New variables for token generation
+        self.token_count = tk.IntVar(value=20)  # Default to 20 tokens
+        self.min_interval = tk.DoubleVar(value=3.0)  # Min minutes between tokens
+        self.avg_interval = tk.DoubleVar(value=5.0)  # Avg minutes between tokens
+        self.max_interval = tk.DoubleVar(value=8.0)  # Max minutes between tokens
+        
         # Load from config
         self._load_from_config()
         
@@ -46,6 +52,12 @@ class SimulationTab:
         self.simulation_days.set(self.config.get("simulation_days", 2))
         self.target_avg_time.set(self.config.get("target_avg_time", 0.0))
         self.random_seed.set(self.config.get("random_seed", 10))
+        
+        # Load token generation parameters
+        self.token_count.set(self.config.get("token_count", 20))
+        self.min_interval.set(self.config.get("min_interval", 3.0))
+        self.avg_interval.set(self.config.get("avg_interval", 5.0))
+        self.max_interval.set(self.config.get("max_interval", 8.0))
         
     def setup_ui(self):
         """Set up the UI components of the tab."""
@@ -136,9 +148,89 @@ class SimulationTab:
             foreground="gray"
         ).grid(row=0, column=2, padx=5, pady=10, sticky="w")
         
+        # Token count
+        ttk.Label(sim_params_frame, text="Number of Tokens:").grid(
+            row=1, column=0, padx=5, pady=10, sticky="w"
+        )
+        token_spin = ttk.Spinbox(
+            sim_params_frame, 
+            from_=1, 
+            to=1000, 
+            textvariable=self.token_count, 
+            width=10
+        )
+        token_spin.grid(row=1, column=1, padx=5, pady=10, sticky="w")
+        
+        # Help info for token count
+        ttk.Label(
+            sim_params_frame,
+            text="Total number of process instances to simulate",
+            font=("", 8, "italic"),
+            foreground="gray"
+        ).grid(row=1, column=2, padx=5, pady=10, sticky="w")
+        
+        # Create LabelFrame for token arrival intervals
+        arrival_frame = ttk.LabelFrame(sim_params_frame, text="Token Arrival Intervals (minutes)")
+        arrival_frame.grid(row=2, column=0, columnspan=3, padx=5, pady=10, sticky="we")
+        
+        # Configure the grid for arrival parameters
+        arrival_frame.columnconfigure(0, weight=1)  # Label column
+        arrival_frame.columnconfigure(1, weight=1)  # Input column
+        arrival_frame.columnconfigure(2, weight=2)  # Help text column
+        
+        # Minimum interval
+        ttk.Label(arrival_frame, text="Minimum:").grid(
+            row=0, column=0, padx=5, pady=5, sticky="w"
+        )
+        min_spin = ttk.Spinbox(
+            arrival_frame, 
+            from_=0.1, 
+            to=60, 
+            increment=0.1,
+            textvariable=self.min_interval, 
+            width=10
+        )
+        min_spin.grid(row=0, column=1, padx=5, pady=5, sticky="w")
+        
+        # Average interval
+        ttk.Label(arrival_frame, text="Average:").grid(
+            row=1, column=0, padx=5, pady=5, sticky="w"
+        )
+        avg_spin = ttk.Spinbox(
+            arrival_frame, 
+            from_=0.2, 
+            to=60, 
+            increment=0.1,
+            textvariable=self.avg_interval, 
+            width=10
+        )
+        avg_spin.grid(row=1, column=1, padx=5, pady=5, sticky="w")
+        
+        # Maximum interval
+        ttk.Label(arrival_frame, text="Maximum:").grid(
+            row=2, column=0, padx=5, pady=5, sticky="w"
+        )
+        max_spin = ttk.Spinbox(
+            arrival_frame, 
+            from_=0.3, 
+            to=60, 
+            increment=0.1,
+            textvariable=self.max_interval, 
+            width=10
+        )
+        max_spin.grid(row=2, column=1, padx=5, pady=5, sticky="w")
+        
+        # Help text for arrival intervals
+        ttk.Label(
+            arrival_frame,
+            text="Uses triangular distribution to calculate token arrival times\nbased on these intervals (similar to Bizagi)",
+            font=("", 8, "italic"),
+            foreground="gray"
+        ).grid(row=0, column=2, rowspan=3, padx=5, pady=5, sticky="w")
+        
         # Target average time
         ttk.Label(sim_params_frame, text="Target Average Processing Time (minutes):").grid(
-            row=1, column=0, padx=5, pady=10, sticky="w"
+            row=3, column=0, padx=5, pady=10, sticky="w"
         )
         target_entry = ttk.Spinbox(
             sim_params_frame, 
@@ -148,17 +240,17 @@ class SimulationTab:
             textvariable=self.target_avg_time, 
             width=10
         )
-        target_entry.grid(row=1, column=1, padx=5, pady=10, sticky="w")
+        target_entry.grid(row=3, column=1, padx=5, pady=10, sticky="w")
         ttk.Label(
             sim_params_frame, 
             text="(0 = no target optimization)",
             font=("", 8, "italic"),
             foreground="gray"
-        ).grid(row=1, column=2, padx=5, pady=10, sticky="w")
+        ).grid(row=3, column=2, padx=5, pady=10, sticky="w")
         
         # Random seed
         ttk.Label(sim_params_frame, text="Random Seed:").grid(
-            row=2, column=0, padx=5, pady=10, sticky="w"
+            row=4, column=0, padx=5, pady=10, sticky="w"
         )
         seed_spin = ttk.Spinbox(
             sim_params_frame, 
@@ -167,7 +259,7 @@ class SimulationTab:
             textvariable=self.random_seed, 
             width=10
         )
-        seed_spin.grid(row=2, column=1, padx=5, pady=10, sticky="w")
+        seed_spin.grid(row=4, column=1, padx=5, pady=10, sticky="w")
         
         # Help info for random seed
         ttk.Label(
@@ -175,11 +267,32 @@ class SimulationTab:
             text="Controls randomization for reproducible results",
             font=("", 8, "italic"),
             foreground="gray"
-        ).grid(row=2, column=2, padx=5, pady=10, sticky="w")
+        ).grid(row=4, column=2, padx=5, pady=10, sticky="w")
+        
+        # Add validation for arrival intervals
+        def validate_intervals(*args):
+            try:
+                min_val = self.min_interval.get()
+                avg_val = self.avg_interval.get()
+                max_val = self.max_interval.get()
+                
+                if min_val > avg_val:
+                    self.avg_interval.set(min_val)
+                
+                if avg_val > max_val:
+                    self.max_interval.set(avg_val)
+                    
+            except Exception:
+                pass
+                
+        # Add trace to the interval variables
+        self.min_interval.trace_add("write", validate_intervals)
+        self.avg_interval.trace_add("write", validate_intervals)
+        self.max_interval.trace_add("write", validate_intervals)
         
         # Advanced parameters section
         adv_frame = ttk.LabelFrame(sim_params_frame, text="Advanced Parameters")
-        adv_frame.grid(row=3, column=0, columnspan=3, padx=5, pady=10, sticky="we")
+        adv_frame.grid(row=5, column=0, columnspan=3, padx=5, pady=10, sticky="we")
         
         # Configure the grid for advanced parameters
         adv_frame.columnconfigure(0, weight=0)  # Label column
@@ -279,6 +392,8 @@ class SimulationTab:
         info_content = """The simulation will process tokens through the model based on the specified parameters:
 
 • Simulation Days: The number of calendar days to simulate.
+• Number of Tokens: Total number of process instances to generate.
+• Token Arrival Intervals: Controls how frequently new tokens are created using triangular distribution.
 • Target Average Time: If specified, the simulator will attempt to optimize resource allocation to meet this target.
 • Random Seed: Controls randomization for reproducible results.
 
@@ -316,3 +431,9 @@ Advanced parameters allow fine-tuning of the simulation behavior:
         self.config.set("simulation_days", self.simulation_days.get())
         self.config.set("target_avg_time", self.target_avg_time.get())
         self.config.set("random_seed", self.random_seed.get())
+        
+        # Add token generation parameters to config
+        self.config.set("token_count", self.token_count.get())
+        self.config.set("min_interval", self.min_interval.get())
+        self.config.set("avg_interval", self.avg_interval.get())
+        self.config.set("max_interval", self.max_interval.get())

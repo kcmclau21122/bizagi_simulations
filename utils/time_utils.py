@@ -1,6 +1,27 @@
 from datetime import datetime, timedelta
 from typing import Optional, Union
 
+def day_of_week_to_index(day_name: str) -> int:
+    """
+    Convert a day of the week name to its index (0-6 where 0 is Monday).
+    
+    Args:
+        day_name: Name of the day of the week (case insensitive)
+        
+    Returns:
+        Index of the day (0-6)
+    """
+    days = {
+        'monday': 0,
+        'tuesday': 1,
+        'wednesday': 2,
+        'thursday': 3,
+        'friday': 4,
+        'saturday': 5,
+        'sunday': 6
+    }
+    return days.get(day_name.lower(), -1)  # Return -1 for invalid day names
+
 def format_duration(minutes: float) -> str:
     """
     Format a duration in minutes to a more readable format.

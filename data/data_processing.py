@@ -9,9 +9,13 @@ import pandas as pd
 from typing import Dict, Any, List, Tuple, Optional
 import subprocess
 import platform
+import tkinter as tk
+from tkinter import ttk
 
 from utils.config import ConfigManager
 from utils.time_utils import format_duration_for_display
+from ui.components.ui_components import ScrollableFrame
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 class ResultsFormatter:
     """Formats simulation results into readable text."""
@@ -96,6 +100,87 @@ class ResultsExporter:
         
         df = pd.DataFrame(token_data)
         df.to_csv(file_path, index=False)
+        
+    def export_to_excel(self, results: Dict[str, Any], file_path: str, simulation_params: Dict[str, Any]) -> None:
+        """Export results to Excel file with multiple sheets."""
+        # Create a Pandas Excel writer
+        with pd.ExcelWriter(file_path, engine='xlsxwriter') as writer:
+            # Export completed tokens
+            completed_tokens = results.get("completed_tokens", [])
+            token_data = []
+            for token in completed_tokens:
+                process_duration = (token['end_time'] - token['start_time']).total_seconds() / 60
+                token_data.append({
+                    "Token ID": token.get('token_id', token.get('current_task', 'Unknown')),
+                    "Start Time": token['start_time'],
+                    "End Time": token['end_time'],
+                    "Total Duration (min)": round(process_duration, 2),
+                    "Wait Time (min)": round(token['total_wait_time'], 2),
+                    "Path": " -> ".join(token.get('path', [])),
+                })
+            
+            if token_data:
+                df_tokens = pd.DataFrame(token_data)
+                df_tokens.to_excel(writer, sheet_name='Completed Tokens', index=False)
+            
+            # Export activity statistics
+            activity_stats = results.get("activity_processing_times", {})
+            activity_data = []
+            for activity_id, stats in activity_stats.items():
+                avg_processing_time = 0
+                if len(stats.get("processing_times", [])) > 0:
+                    avg_processing_time = sum(stats.get("processing_times", [])) / len(stats.get("processing_times", []))
+                
+                avg_wait_time = 0
+                if len(stats.get("wait_times", [])) > 0:
+                    avg_wait_time = sum(stats.get("wait_times", [])) / len(stats.get("wait_times", []))
+                
+                activity_data.append({
+                    "Activity": activity_id,
+                    "Tokens Started": stats.get("tokens_started", 0),
+                    "Tokens Completed": stats.get("tokens_completed", 0),
+                    "Avg Processing Time (min)": round(avg_processing_time, 2),
+                    "Avg Wait Time (min)": round(avg_wait_time, 2),
+                    "Total Avg Time (min)": round(avg_processing_time + avg_wait_time, 2)
+                })
+            
+            if activity_data:
+                df_activities = pd.DataFrame(activity_data)
+                df_activities.to_excel(writer, sheet_name='Activity Statistics', index=False)
+            
+            # Export resource utilization
+            resource_utilization = results.get("resource_utilization", {})
+            resource_data = [
+                {"Resource": resource, "Utilization (%)": utilization}
+                for resource, utilization in resource_utilization.items()
+            ]
+            
+            if resource_data:
+                df_resources = pd.DataFrame(resource_data)
+                df_resources.to_excel(writer, sheet_name='Resource Utilization', index=False)
+            
+            # Export simulation parameters
+            simulation_data = [
+                {"Parameter": "Total Tokens Started", "Value": results.get("total_tokens_started", 0)},
+                {"Parameter": "Completed Tokens", "Value": len(completed_tokens)},
+                {"Parameter": "Simulation Days", "Value": results.get("simulation_days", 0)},
+                {"Parameter": "Token Count Setting", "Value": simulation_params.get("max_arrival_count", 0)},
+                {"Parameter": "Min Interval (min)", "Value": simulation_params.get("min_interval", 0)},
+                {"Parameter": "Avg Interval (min)", "Value": simulation_params.get("avg_interval", 0)},
+                {"Parameter": "Max Interval (min)", "Value": simulation_params.get("max_interval", 0)}
+            ]
+            
+            # Calculate average process time if tokens completed
+            if completed_tokens:
+                process_durations = [
+                    (token['end_time'] - token['start_time']).total_seconds() / 60 
+                    for token in completed_tokens
+                ]
+                avg_time = sum(process_durations) / len(process_durations)
+                simulation_data.append({"Parameter": "Average Process Time (min)", "Value": round(avg_time, 2)})
+            
+            df_params = pd.DataFrame(simulation_data)
+            df_params.to_excel(writer, sheet_name='Simulation Parameters', index=False)
 
 
 class ChartExporter:

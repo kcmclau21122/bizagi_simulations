@@ -16,6 +16,33 @@ class ProcessModelBuilder:
         self.process_model = nx.DiGraph()
         self.gateway_types = ["[Exclusive Gateway]", "[Inclusive Gateway]", "[Parallel Gateway]"]
         
+# Add this method to the ProcessModel class if it doesn't exist
+# or replace the existing one
+
+    def get_all_resources(self) -> Dict[str, int]:
+        """
+        Get all resources defined in the process model with their counts.
+        
+        Returns:
+            Dict mapping resource IDs to their available counts
+        """
+        resources = {}
+        # Scan all nodes for resources
+        for node_id, node_data in self.nodes.items():
+            resource = node_data.get('resource')
+            if resource:
+                # Get count from node data if available, otherwise use default 1
+                count = int(node_data.get('resource count', 1))
+                # Update the resource count (use max if resource appears multiple times)
+                if resource in resources:
+                    resources[resource] = max(resources[resource], count)
+                else:
+                    resources[resource] = count
+                
+        # Debug log the resources found
+        logging.info(f"Found {len(resources)} resources in process model: {resources}")
+        return resources
+
     def build_from_sequences(self, sequence_file_path: str, simulation_metrics: pd.DataFrame) -> nx.DiGraph:
         """
         Build a process model from a sequence file and simulation metrics.
