@@ -1,0 +1,7 @@
+2025-03-08 19:51:08,093 - root - INFO - Logging initialized
+2025-03-08 19:51:08,093 - root - INFO - Starting Bizagi Process Simulator
+2025-03-08 19:51:08,093 - root - INFO - NetworkX compatibility patch applied
+2025-03-08 19:51:08,093 - root - INFO - Settings loaded from bizagi_simulator_settings.json
+2025-03-08 19:51:08,093 - root - INFO - Configuration loaded
+2025-03-08 19:51:15,214 - root - INFO - Application UI initialized
+2025-03-08 19:52:08,062 - root - INFO - Application exited normally

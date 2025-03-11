@@ -114,6 +114,12 @@ class SimulationRunner:
             builder = ProcessModelBuilder()
             process_graph = builder.build_from_sequences(sequence_file_path, processed_metrics)
             
+            # Save the process model to JSON with timestamp
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            json_output_path = f"process_model_{timestamp}.json"
+            saved_json_path = builder.save_to_json(json_output_path)
+            self._update_progress(f"Process model saved to: {saved_json_path}")
+            
             # Convert the NetworkX DiGraph to a ProcessModel object
             self._update_progress("Converting graph to ProcessModel...")
             process_model = ProcessModel()

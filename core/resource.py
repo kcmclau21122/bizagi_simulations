@@ -8,12 +8,15 @@ class ResourceManager:
     waiting queues, and calculating utilization.
     """
     
-    def __init__(self):
+    def __init__(self, initial_resources: Optional[Dict[str, Any]] = None):
         """Initialize the resource manager."""
         self.active_resources = defaultdict(int)  # Currently in use
         self.resource_wait_queue = defaultdict(list)  # Tokens waiting for resources
         self.resource_busy_periods = defaultdict(list)  # When resources were busy
-        self.available_resources = {}  # Total available count of each resource
+        self.available_resources = initial_resources if initial_resources is not None else {}
+        
+    # ... (rest of the methods remain unchanged)
+
         
     def set_available_resources(self, resource_id: str, count: int) -> None:
         """Set the number of available resources of a given type."""
@@ -30,7 +33,7 @@ class ResourceManager:
         return active < available
         
     def allocate_resource(self, resource_id: str, token_id: str, 
-                         node_id: str, time: datetime) -> bool:
+                        node_id: str, time: datetime) -> bool:
         """
         Try to allocate a resource for a token.
         Returns True if resource was allocated, False if token was added to wait queue.
@@ -44,6 +47,7 @@ class ResourceManager:
             self.resource_wait_queue[resource_id].append((token_id, node_id, time))
             return False
             
+# In resource.py
     def release_resource(self, resource_id: str, time: datetime) -> Optional[Tuple[str, str, datetime]]:
         """
         Release a resource and get the next token in queue if any.
@@ -60,7 +64,13 @@ class ResourceManager:
                     
             # Check wait queue
             if self.resource_wait_queue[resource_id]:
-                return self.resource_wait_queue[resource_id].pop(0)
+                next_token = self.resource_wait_queue[resource_id].pop(0)
+                
+                # Immediately mark the resource as allocated again for the next token
+                self.active_resources[resource_id] += 1
+                self.resource_busy_periods[resource_id].append([time, None])
+                
+                return next_token
         
         return None
         

@@ -234,3 +234,42 @@ class ProcessModel:
                 gateways[node_id] = node_data
                 
         return gateways
+    # New method in process_model.py
+# Modified method in process_model.py
+    def debug_resource_assignment(self) -> Dict[str, List[str]]:
+        """
+        Provides debugging information about resource assignments.
+        
+        Returns:
+            Dictionary mapping resources to the tasks they're assigned to
+        """
+        from collections import defaultdict  # Add this import
+        
+        resource_tasks = defaultdict(list)
+        
+        for node_id, node_data in self.nodes.items():
+            resource = node_data.get('resource')
+            if resource:
+                resource_tasks[resource].append(node_id)
+                
+            # Log ALL node information for debugging
+            logging.info(f"Node ID: {node_id}, Name: {node_data.get('name', 'Unknown')}, "
+                        f"Resource: {resource}, Type: {node_data.get('type', 'Unknown')}")
+                
+        # Check for potential issues
+        all_resources = set(resource_tasks.keys())
+        for resource in all_resources:
+            tasks = resource_tasks[resource]
+            if tasks:
+                sample_task = tasks[0]
+                count = self.nodes.get(sample_task, {}).get('resource count', 1)
+                try:
+                    count = int(count)
+                except (ValueError, TypeError):
+                    count = 1
+                    logging.warning(f"Invalid resource count for {resource}: {count}")
+                    
+                logging.info(f"Resource '{resource}' (count: {count}) is assigned to tasks: {resource_tasks[resource]}")
+                
+        return dict(resource_tasks)
+

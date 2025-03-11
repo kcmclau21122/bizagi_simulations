@@ -14,6 +14,7 @@ from ui.tabs.files_tab import FilesTab
 from ui.tabs.calendar_tab import CalendarTab
 from ui.tabs.simulation_tab import SimulationTab
 from ui.tabs.enhanced_results_tab import EnhancedResultsTab
+from ui.tabs.metrics_tab import MetricsTab
 
 
 class MainWindow:
@@ -54,8 +55,11 @@ class MainWindow:
         self.tab_control = ttk.Notebook(self.tabs_frame)
         self.tab_control.pack(expand=1, fill="both")
         
-        # Create tabs
-        self.files_tab = FilesTab(self.tab_control, self.config)
+        # Create metrics tab first so we can pass its load method as a callback
+        self.metrics_tab = MetricsTab(self.tab_control, self.config)
+        
+        # Create other tabs
+        self.files_tab = FilesTab(self.tab_control, self.config, metrics_loaded_callback=self.on_metrics_file_loaded)
         self.calendar_tab = CalendarTab(self.tab_control, self.config)
         self.simulation_tab = SimulationTab(self.tab_control, self.config)
         self.enhanced_results_tab = EnhancedResultsTab(self.tab_control, self.config)
@@ -64,6 +68,7 @@ class MainWindow:
         self.tab_control.add(self.files_tab.frame, text='Files')
         self.tab_control.add(self.calendar_tab.frame, text='Calendar')
         self.tab_control.add(self.simulation_tab.frame, text='Simulation')
+        self.tab_control.add(self.metrics_tab.frame, text='Metrics')
         self.tab_control.add(self.enhanced_results_tab.frame, text='Results')
         
         # Add control buttons frame - place at bottom of window
@@ -95,7 +100,7 @@ class MainWindow:
             
     def save_settings(self) -> None:
         """Save current settings to the configuration file."""
-        # Update config from all tabs
+        # Update config from all tabs except metrics tab (which saves separately)
         self.files_tab.update_config()
         self.calendar_tab.update_config()
         self.simulation_tab.update_config()
@@ -105,6 +110,8 @@ class MainWindow:
             messagebox.showinfo("Settings Saved", "Your settings have been saved successfully.")
         else:
             messagebox.showerror("Error", "Failed to save settings.")
+            
+        # Note: Metrics data is saved separately through the Metrics tab's save function
             
     def run_simulation(self) -> None:
         """Run the simulation with the current configuration."""
@@ -116,6 +123,7 @@ class MainWindow:
         self.files_tab.update_config()
         self.calendar_tab.update_config()
         self.simulation_tab.update_config()
+        # Note: metrics_tab changes are managed separately
         
         # Show progress dialog
         self.show_progress_dialog()
@@ -242,7 +250,7 @@ class MainWindow:
         self.enhanced_results_tab.update_results(results)
         
         # Switch to results tab
-        self.tab_control.select(3)  # Index of results tab
+        self.tab_control.select(4)  # Index of results tab (now at index 4 due to metrics tab)
         
         # Ensure buttons remain visible
         self.root.update_idletasks()
@@ -253,6 +261,19 @@ class MainWindow:
             "Simulation completed successfully.\n"
             f"Results saved to {os.path.splitext(os.path.basename(self.config.get('xpdl_file_path')))[0]}_results.xlsx"
         )
+    
+    def on_metrics_file_loaded(self, file_path: str) -> None:
+        """
+        Handle metrics file loaded event from files tab.
+        
+        Args:
+            file_path: Path to the loaded metrics file
+        """
+        # Update metrics tab with the loaded file
+        self.metrics_tab.load_metrics_data(file_path)
+        
+        # Switch to the metrics tab to show the loaded data
+        self.tab_control.select(3)  # Index of metrics tab
         
     def on_close(self) -> None:
         """Handle window close event."""

@@ -1,7 +1,7 @@
 {
     "xpdl_file_path": "C:/Users/kcmclau.EVOFORGE/Repos/bizagi_simulations/Bizagi/5.5_1/5.5.13 Real Property-Monthly Reviews-Inclusive.xpdl",
-    "metrics_file_path": "C:/Users/kcmclau.EVOFORGE/Repos/bizagi_simulations/Bizagi/simulation_metrics-inclusive.xlsx",
-    "simulation_days": 300,
+    "metrics_file_path": "C:/Users/kcmclau.EVOFORGE/Repos/bizagi_simulations/Bizagi/simulation_metrics-inclusive_modified.xlsx",
+    "simulation_days": 5,
     "target_avg_time": 0.0,
     "random_seed": 10,
     "workdays": [
@@ -15,7 +15,7 @@
     ],
     "work_hours_start": 7,
     "work_hours_end": 13,
-    "token_count": 500,
+    "token_count": 300,
     "min_interval": 4.0,
     "avg_interval": 5.0,
     "max_interval": 10.0

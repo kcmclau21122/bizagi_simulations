@@ -1,0 +1,66 @@
+2025-03-11 18:20:04,861 - root - INFO - Logging initialized
+2025-03-11 18:20:04,861 - root - INFO - Starting Bizagi Process Simulator
+2025-03-11 18:20:04,862 - root - INFO - NetworkX compatibility patch applied
+2025-03-11 18:20:04,862 - root - INFO - Settings loaded from bizagi_simulator_settings.json
+2025-03-11 18:20:04,863 - root - INFO - Configuration loaded
+2025-03-11 18:20:05,614 - root - INFO - Application UI initialized
+2025-03-11 18:20:07,788 - root - INFO - Loading data...
+2025-03-11 18:20:07,788 - root - INFO - Successfully loaded XPDL file: C:/Users/kcmclau.EVOFORGE/Repos/bizagi_simulations/Bizagi/5.5_1/5.5.13 Real Property-Monthly Reviews-Inclusive.xpdl
+2025-03-11 18:20:07,803 - root - INFO - Successfully loaded metrics from C:/Users/kcmclau.EVOFORGE/Repos/bizagi_simulations/Bizagi/simulation_metrics-inclusive_modified.xlsx
+2025-03-11 18:20:07,803 - root - INFO - Loaded 8 rows with columns: name, type, resource, available resources, avg time, min time, max time, yes, no, arrival interval, max arrival count
+2025-03-11 18:20:07,819 - root - INFO - Preprocessed simulation metrics data
+2025-03-11 18:20:07,819 - root - INFO - Building process model from XPDL...
+2025-03-11 18:20:07,819 - root - INFO - Parsing XPDL file: C:/Users/kcmclau.EVOFORGE/Repos/bizagi_simulations/Bizagi/5.5_1/5.5.13 Real Property-Monthly Reviews-Inclusive.xpdl with namespace: {'xpdl': 'http://www.wfmc.org/2009/XPDL2.2'}
+2025-03-11 18:20:07,819 - root - INFO - Found 11 activities, including 2 gateways
+2025-03-11 18:20:07,819 - root - INFO - Gateway activities: {'c69b6146-7bd5-462f-9865-79a90dbf54e6': '[Exclusive Gateway]', '9ff64215-67ea-40c9-8172-fe1f4fb7030e': '[Inclusive Gateway]'}
+2025-03-11 18:20:07,819 - root - INFO - Found 11 transitions in the process
+2025-03-11 18:20:07,819 - root - INFO - Processing outgoing activities for gateway c69b6146-7bd5-462f-9865-79a90dbf54e6 of type [Exclusive Gateway]
+2025-03-11 18:20:07,819 - root - INFO - Processing outgoing activities for gateway 9ff64215-67ea-40c9-8172-fe1f4fb7030e of type [Inclusive Gateway]
+2025-03-11 18:20:07,819 - root - INFO -   Setting gateway type for 36668b7b-7686-4303-ab26-b6f518da488c to [Inclusive Gateway]
+2025-03-11 18:20:07,819 - root - INFO -   Setting gateway type for 5115501c-098a-4983-be9b-f54396e13e4d to [Inclusive Gateway]
+2025-03-11 18:20:07,819 - root - INFO -   Setting gateway type for 11bbf8d1-f060-46c7-a839-63f24d988003 to [Inclusive Gateway]
+2025-03-11 18:20:07,819 - root - INFO - Generated 11 sequence rows
+2025-03-11 18:20:07,819 - root - INFO - Sequence file saved to: 5.5.13 Real Property-Monthly Reviews-Inclusive_sequences.txt
+2025-03-11 18:20:07,819 - root - INFO - Building process model from sequence file: 5.5.13 Real Property-Monthly Reviews-Inclusive_sequences.txt
+2025-03-11 18:20:07,819 - root - INFO - Extracted 11 transitions from sequence file
+2025-03-11 18:20:07,819 - root - INFO - Gateway connections: {'[Exclusive Gateway]': {'Complete /Accurate?': ['Work with REO RPO to Correct (5.5.13.3)']}, '[Inclusive Gateway]': {'Create Journal Entries?': ['Inclusive Path 3'], 'Note Accuracy in Asset Change Tracker (5.5.13.2)': ['Unknown'], 'Inclusive Path 3': ['Unknown'], 'Create/Post Journal Entries (5.5.13.4)': ['Unknown']}}
+2025-03-11 18:20:07,835 - root - INFO - Added node: Monthly, type: Start, gateway: None
+2025-03-11 18:20:07,836 - root - INFO - Added node: Review AM using Asset Change Tracker (5.5.13.1), type: Activity Step, gateway: None
+2025-03-11 18:20:07,837 - root - INFO - Added node: Complete /Accurate?, type: Activity Step, gateway: [Exclusive Gateway]
+2025-03-11 18:20:07,840 - root - INFO - Added node: Note Accuracy in Asset Change Tracker (5.5.13.2), type: [Inclusive Gateway], gateway: [Inclusive Gateway]
+2025-03-11 18:20:07,841 - root - INFO - Added node: Work with REO RPO to Correct (5.5.13.3), type: CONDITION-No, gateway: None
+2025-03-11 18:20:07,843 - root - INFO - Added node: Create Journal Entries?, type: [Inclusive Gateway], gateway: [Inclusive Gateway]
+2025-03-11 18:20:07,845 - root - INFO - Added node: Create/Post Journal Entries (5.5.13.4), type: [Inclusive Gateway], gateway: [Inclusive Gateway]
+2025-03-11 18:20:07,846 - root - INFO - Added node: Unknown, type: Stop, gateway: None
+2025-03-11 18:20:07,847 - root - INFO - Added node: Inclusive Path 3, type: [Inclusive Gateway], gateway: [Inclusive Gateway]
+2025-03-11 18:20:07,848 - root - INFO - Processing connections for gateway type: [Exclusive Gateway]
+2025-03-11 18:20:07,848 - root - INFO -   Gateway Complete /Accurate? connects to: ['Work with REO RPO to Correct (5.5.13.3)']
+2025-03-11 18:20:07,848 - root - INFO - Processing connections for gateway type: [Inclusive Gateway]
+2025-03-11 18:20:07,849 - root - INFO -   Gateway Create Journal Entries? connects to: ['Inclusive Path 3']
+2025-03-11 18:20:07,849 - root - INFO -     Setting gateway type for Inclusive Path 3 to [Inclusive Gateway]
+2025-03-11 18:20:07,849 - root - INFO -   Gateway Note Accuracy in Asset Change Tracker (5.5.13.2) connects to: ['Unknown']
+2025-03-11 18:20:07,850 - root - INFO -     Setting gateway type for Unknown to [Inclusive Gateway]
+2025-03-11 18:20:07,850 - root - INFO -   Gateway Inclusive Path 3 connects to: ['Unknown']
+2025-03-11 18:20:07,851 - root - INFO -     Setting gateway type for Unknown to [Inclusive Gateway]
+2025-03-11 18:20:07,851 - root - INFO -   Gateway Create/Post Journal Entries (5.5.13.4) connects to: ['Unknown']
+2025-03-11 18:20:07,852 - root - INFO -     Setting gateway type for Unknown to [Inclusive Gateway]
+2025-03-11 18:20:07,852 - root - INFO - Process model built with 9 nodes and 11 edges
+2025-03-11 18:20:07,855 - root - INFO - Process model saved to: process_model_20250311_182007.json
+2025-03-11 18:20:07,856 - root - INFO - Process model saved to: process_model_20250311_182007.json
+2025-03-11 18:20:07,859 - root - INFO - Converting graph to ProcessModel...
+2025-03-11 18:20:07,866 - root - INFO - Built process model with 9 nodes and 11 links
+2025-03-11 18:20:07,867 - root - INFO - Found 1 start nodes: ['Monthly']
+2025-03-11 18:20:07,867 - root - INFO - Found 1 start nodes: ['Monthly']
+2025-03-11 18:20:07,868 - root - INFO - Setting up simulation...
+2025-03-11 18:20:07,870 - core.simulation_engine - INFO - SimulationEngine initialized at 2025-03-11T08:00:00.
+2025-03-11 18:20:07,870 - root - INFO - Scheduling tokens...
+2025-03-11 18:20:07,872 - root - INFO - Scheduling 300 tokens with triangular distribution...
+2025-03-11 18:20:07,873 - root - ERROR - Simulation error: 'SimulationEngine' object has no attribute 'process_model'
+Traceback (most recent call last):
+  File "c:\Users\kcmclau.EVOFORGE\Repos\bizagi_simulations\core\simulation_runner.py", line 188, in _run_simulation
+    tokens_scheduled = self._schedule_tokens_with_triangular_distribution(
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\kcmclau.EVOFORGE\Repos\bizagi_simulations\core\simulation_runner.py", line 248, in _schedule_tokens_with_triangular_distribution
+    start_nodes = engine.process_model.get_start_nodes()
+                  ^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'SimulationEngine' object has no attribute 'process_model'
