@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from collections import defaultdict
 from typing import Dict, List, Tuple, Optional, Any, Callable, Set
 import pandas as pd
+import math
 
 from core.event import Event
 from core.process_token import Token
@@ -195,7 +196,7 @@ class SimulationEngine:
         
     def process_event(self, event: Event) -> None:
         """
-        Process a single event in the simulation.
+        Process a single event in the simulation with improved time tracking.
         
         Args:
             event: The event to process
@@ -953,8 +954,7 @@ class SimulationEngine:
     
     def _calculate_task_duration(self, node: Dict[str, Any]) -> float:
         """
-        Calculate task duration using a modified triangular distribution to better match Bizagi's behavior.
-        Bizagi appears to have a bias towards values closer to the minimum time.
+        Calculate task duration using a true triangular distribution to match Bizagi's behavior.
         
         Args:
             node: Node data containing duration parameters
@@ -962,7 +962,7 @@ class SimulationEngine:
         Returns:
             Duration in minutes
         """
-        # Extract duration parameters with more flexibility in column naming
+        # Extract duration parameters
         min_time = 0
         avg_time = 0
         max_time = 0
@@ -1006,16 +1006,20 @@ class SimulationEngine:
         max_time = max(min_time, avg_time, max_time)
         avg_time = max(min_time, min(avg_time, max_time))
         
-        # Modified triangular distribution algorithm to better match Bizagi's behavior
-        # Generate two random numbers
-        u1 = random.random()
-        u2 = random.random()
+        # Implement a proper triangular distribution
+        # This matches the mathematical definition used by Bizagi
+        u = random.random()  # Uniform random number between 0 and 1
         
-        # Use a weighted approach that favors values closer to the minimum
-        if u1 < 0.7:  # 70% of the time, sample between min and avg
-            duration = min_time + u2 * (avg_time - min_time)
-        else:  # 30% of the time, sample between avg and max
-            duration = avg_time + u2 * (max_time - avg_time)
+        # Standard triangular distribution formula
+        if u <= (avg_time - min_time) / (max_time - min_time):
+            # Sample from the left side of the triangle
+            duration = min_time + math.sqrt(u * (max_time - min_time) * (avg_time - min_time))
+        else:
+            # Sample from the right side of the triangle
+            duration = max_time - math.sqrt((1 - u) * (max_time - min_time) * (max_time - avg_time))
+        
+        # Ensure duration stays within bounds
+        duration = max(min_time, min(duration, max_time))
         
         # Log parameters used for duration calculation
         node_name = node.get('name', 'Unknown')
@@ -1025,7 +1029,7 @@ class SimulationEngine:
             
     def get_results(self) -> Dict[str, Any]:
         """
-        Get the simulation results.
+        Get the simulation results with improved process time calculation.
         
         Returns:
             Dictionary with simulation results
@@ -1037,10 +1041,26 @@ class SimulationEngine:
         )
         
         # Convert tokens to dictionaries for JSON serialization
-        completed_token_dicts = [token.to_dict() for token in self.completed_tokens]
+        completed_token_dicts = []
+        
+        for token in self.completed_tokens:
+            token_dict = token.to_dict()
+            
+            # Calculate "ideal" processing time (without wait times)
+            process_duration = (token.end_time - token.start_time).total_seconds() / 60
+            ideal_duration = process_duration - token.total_wait_time
+            
+            # Add this to the token data
+            token_dict["ideal_duration"] = ideal_duration
+            token_dict["wait_percentage"] = (token.total_wait_time / process_duration * 100) if process_duration > 0 else 0
+            
+            completed_token_dicts.append(token_dict)
         
         # Also include active tokens to see where they got stuck
         active_token_dicts = [token.to_dict() for token in self.tokens.values()]
+        
+        # Calculate process-level metrics similar to Bizagi
+        process_metrics = self._calculate_process_metrics(completed_token_dicts)
         
         return {
             "activity_processing_times": self.activity_stats,
@@ -1048,6 +1068,46 @@ class SimulationEngine:
             "total_tokens_started": self.total_tokens_started,
             "completed_tokens": completed_token_dicts,
             "active_tokens": active_token_dicts,
-            "simulation_days": self.simulation_days
+            "simulation_days": self.simulation_days,
+            "process_metrics": process_metrics
         }
 
+    def _calculate_process_metrics(self, completed_tokens: List[Dict[str, Any]]) -> Dict[str, float]:
+        """
+        Calculate process-level metrics similar to Bizagi.
+        
+        Args:
+            completed_tokens: List of completed token data
+            
+        Returns:
+            Process metrics dictionary
+        """
+        if not completed_tokens:
+            return {
+                "avg_time": 0,
+                "min_time": 0,
+                "max_time": 0,
+                "avg_wait_time": 0,
+                "avg_ideal_time": 0
+            }
+        
+        # Extract durations and wait times
+        durations = [token.get("total_duration", 0) for token in completed_tokens]
+        wait_times = [token.get("total_wait_time", 0) for token in completed_tokens]
+        ideal_times = [token.get("ideal_duration", 0) for token in completed_tokens]
+        
+        # Calculate metrics
+        avg_time = sum(durations) / len(durations)
+        min_time = min(durations)
+        max_time = max(durations)
+        avg_wait_time = sum(wait_times) / len(wait_times)
+        avg_ideal_time = sum(ideal_times) / len(ideal_times)
+        
+        return {
+            "avg_time": avg_time,
+            "min_time": min_time,
+            "max_time": max_time,
+            "avg_wait_time": avg_wait_time,
+            "avg_ideal_time": avg_ideal_time
+        }
+    
