@@ -18,16 +18,18 @@ class FilesTab:
     Provides file selection and basic file information display.
     """
     
-    def __init__(self, parent: ttk.Notebook, config: ConfigManager):
+    def __init__(self, parent: ttk.Notebook, config: ConfigManager, metrics_loaded_callback=None):
         """
         Initialize the files tab.
         
         Args:
             parent: Parent notebook widget
             config: Configuration manager
+            metrics_loaded_callback: Callback function to call when metrics file is loaded
         """
         self.parent = parent
         self.config = config
+        self.metrics_loaded_callback = metrics_loaded_callback
         
         # Create tab frame
         self.frame = ttk.Frame(parent)
@@ -39,7 +41,7 @@ class FilesTab:
         
         # Update UI with current values
         self.update_ui_from_config()
-        
+            
     def setup_ui(self) -> None:
         """Set up the UI components of the tab."""
         # Create a PanedWindow for resizable sections
@@ -246,6 +248,13 @@ class FilesTab:
             self.metrics_entry.delete(0, tk.END)
             self.metrics_entry.insert(0, file_path)
             
+            # Update config with the new path
+            self.config.set("metrics_file_path", file_path)
+            
+            # Call metrics loaded callback if available
+            if self.metrics_loaded_callback:
+                self.metrics_loaded_callback(file_path)
+            
     def analyze_files(self) -> None:
         """Analyze the selected files and show information."""
         # Set cursor to wait state
@@ -329,6 +338,14 @@ class FilesTab:
                         info_text += f"  - {activity_type}: {count}\n"
                 else:
                     info_text += "No 'Type' column found in metrics file.\n"
+                    
+                # Update config with the metrics file path
+                self.config.set("metrics_file_path", metrics_path)
+                
+                # Call metrics loaded callback if available
+                if self.metrics_loaded_callback:
+                    self.metrics_loaded_callback(metrics_path)
+                    
             except Exception as e:
                 info_text += f"Error reading metrics file: {str(e)}\n"
         
@@ -340,4 +357,5 @@ class FilesTab:
         
         # Reset cursor to normal
         self.frame.config(cursor="")
+        
         

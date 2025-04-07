@@ -1,6 +1,26 @@
 from datetime import datetime, timedelta
 from typing import Optional, Union
 
+import random
+
+class TimeCalculator:
+    def triangular_duration(self, **kwargs) -> float:
+        """
+        Calculate a duration using a triangular distribution.
+        
+        Expected keyword arguments:
+            min: The minimum value (in minutes)
+            avg: The mode (most likely value, in minutes)
+            max: The maximum value (in minutes)
+        
+        Returns:
+            A random duration in minutes based on the triangular distribution.
+        """
+        min_time = kwargs.get('min', 1)
+        avg_time = kwargs.get('avg', 1)
+        max_time = kwargs.get('max', 1)
+        return random.triangular(min_time, max_time, avg_time)
+
 def day_of_week_to_index(day_name: str) -> int:
     """
     Convert a day of the week name to its index (0-6 where 0 is Monday).
@@ -310,3 +330,5 @@ def get_working_minutes_between(start_time: datetime,
         working_minutes += (end_time.hour - work_start_hour) * 60 + end_time.minute
     
     return working_minutes
+
+
