@@ -1,3 +1,9 @@
 simulation_log.txt
 output*.txt
 process*.json
+*.log
+*/logs
+/logs
+C:/Users/kcmclau.EVOFORGE/Repos/bizagi_simulations/logs
+
+

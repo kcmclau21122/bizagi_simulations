@@ -953,7 +953,8 @@ class SimulationEngine:
     
     def _calculate_task_duration(self, node: Dict[str, Any]) -> float:
         """
-        Calculate task duration using triangular distribution.
+        Calculate task duration using a modified triangular distribution to better match Bizagi's behavior.
+        Bizagi appears to have a bias towards values closer to the minimum time.
         
         Args:
             node: Node data containing duration parameters
@@ -961,7 +962,7 @@ class SimulationEngine:
         Returns:
             Duration in minutes
         """
-        # Extract duration parameters
+        # Extract duration parameters with more flexibility in column naming
         min_time = 0
         avg_time = 0
         max_time = 0
@@ -1005,9 +1006,19 @@ class SimulationEngine:
         max_time = max(min_time, avg_time, max_time)
         avg_time = max(min_time, min(avg_time, max_time))
         
+        # Modified triangular distribution algorithm to better match Bizagi's behavior
+        # Generate two random numbers
+        u1 = random.random()
+        u2 = random.random()
+        
+        # Use a weighted approach that favors values closer to the minimum
+        if u1 < 0.7:  # 70% of the time, sample between min and avg
+            duration = min_time + u2 * (avg_time - min_time)
+        else:  # 30% of the time, sample between avg and max
+            duration = avg_time + u2 * (max_time - avg_time)
+        
         # Log parameters used for duration calculation
         node_name = node.get('name', 'Unknown')
-        duration = random.triangular(min_time, max_time, avg_time)
         logging.debug(f"Task duration for {node_name}: {duration:.2f} minutes (min={min_time}, avg={avg_time}, max={max_time})")
         
         return duration
