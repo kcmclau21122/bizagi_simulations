@@ -1,0 +1,7 @@
+PROCESS SEQUENCES FROM process_1.xpdl
+===============================================
+
+Start [Type: Start] [Type: Start] -> Step 1
+Step 1 -> Step 2
+Step 2 -> Step 3
+Step 3 -> Stop [Type: Stop] [Type: Stop]

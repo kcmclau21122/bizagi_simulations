@@ -1,0 +1,26 @@
+{
+    "metadata": {
+        "source_file": "5.5.13 Real Property-Monthly Reviews-Inclusive.xpdl",
+        "creation_date": "2025-03-25T14:24:08.632752",
+        "total_sequences": 1
+    },
+    "nodes": [
+        {
+            "id": "start_node",
+            "name": "5.5.13 Real Property-Monthly Reviews-Inclusive Start [Type: Start]",
+            "type": "Start"
+        },
+        {
+            "id": "end_node",
+            "name": "5.5.13 Real Property-Monthly Reviews-Inclusive End [Type: Stop]",
+            "type": "Stop"
+        }
+    ],
+    "links": [
+        {
+            "source": "5.5.13 Real Property-Monthly Reviews-Inclusive Start [Type: Start]",
+            "target": "5.5.13 Real Property-Monthly Reviews-Inclusive End [Type: Stop]",
+            "type": "NORMAL"
+        }
+    ]
+}

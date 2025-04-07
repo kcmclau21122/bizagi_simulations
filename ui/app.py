@@ -29,10 +29,10 @@ def setup_logging():
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     log_file = os.path.join(logs_dir, f"bizagi_simulator_{timestamp}.log")
     
-    # Configure logging
+    # Configure logging with more detailed format
     logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        level=logging.DEBUG,  # You can change to logging.INFO for less details
+        format='%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s',
         handlers=[
             logging.FileHandler(log_file),
             logging.StreamHandler()

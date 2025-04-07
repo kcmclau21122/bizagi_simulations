@@ -1,0 +1,12 @@
+PROCESS PATHS ANALYSIS
+======================
+
+XPDL File: C:/Users/kcmclau.EVOFORGE/Repos/bizagi_simulations/Bizagi/Test Models/process_1.xpdl
+Total Paths: 1
+
+ALL POSSIBLE PROCESS PATHS:
+=========================
+
+Path 1:
+  Start ->   Step 1 ->   Step 2 ->   Step 3 ->   Stop
+

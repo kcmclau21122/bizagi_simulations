@@ -48,14 +48,58 @@ class DataLoader:
             DataFrame containing simulation metrics
         """
         if not os.path.exists(file_path):
+            logging.error(f"Metrics file not found: {file_path}")
             raise FileNotFoundError(f"Metrics file not found: {file_path}")
             
         try:
             # Load Excel file
             df = pd.read_excel(file_path, sheet_name=sheet_name)
             
+            # Handle empty dataframe
+            if df.empty:
+                logging.warning(f"Metrics file {file_path} is empty. Using default metrics.")
+                # Create a minimal default dataframe
+                df = pd.DataFrame({
+                    'name': ['Start', 'Process', 'End'],
+                    'type': ['Start', 'Task', 'Stop'],
+                    'min time': [0, 5, 0],
+                    'avg time': [0, 10, 0],
+                    'max time': [0, 15, 0]
+                })
+            
             # Normalize column names to lowercase for consistency
             df.columns = [str(col).lower() for col in df.columns]
+            
+            # Handle missing required columns
+            required_columns = ['name']
+            for col in required_columns:
+                if col not in df.columns:
+                    logging.warning(f"Required column '{col}' missing from metrics. Adding default column.")
+                    df[col] = [f"Activity_{i}" for i in range(len(df))]
+            
+            # Add type column if missing
+            if 'type' not in df.columns:
+                logging.warning("Type column missing from metrics. Adding default 'Task' type.")
+                df['type'] = 'Task'
+                # Set first row to Start if there's at least one row
+                if len(df) > 0:
+                    df.loc[0, 'type'] = 'Start'
+                # Set last row to Stop if there are at least two rows
+                if len(df) > 1:
+                    df.loc[len(df)-1, 'type'] = 'Stop'
+            
+            # Add time columns if missing
+            time_columns = ['min time', 'avg time', 'max time']
+            for col in time_columns:
+                if col not in df.columns:
+                    logging.warning(f"Time column '{col}' missing from metrics. Adding default values.")
+                    default_value = 5 if col == 'avg time' else (1 if col == 'min time' else 10)
+                    df[col] = default_value
+                else:
+                    # Ensure numeric values
+                    df[col] = pd.to_numeric(df[col], errors='coerce').fillna(
+                        5 if col == 'avg time' else (1 if col == 'min time' else 10)
+                    )
             
             # Log basic information about the loaded data
             logging.info(f"Successfully loaded metrics from {file_path}")
@@ -66,6 +110,7 @@ class DataLoader:
         except Exception as e:
             logging.error(f"Error loading metrics file {file_path}: {str(e)}")
             raise ValueError(f"Invalid metrics file: {str(e)}")
+
     
     @staticmethod
     def validate_simulation_metrics(df: pd.DataFrame) -> Tuple[bool, List[str]]:
@@ -256,6 +301,7 @@ class DataLoader:
     def preprocess_metrics(df: pd.DataFrame) -> pd.DataFrame:
         """
         Preprocess simulation metrics for use in simulation.
+        Extracts gateway probabilities and organizes them for easy access.
         
         Args:
             df: DataFrame containing simulation metrics
@@ -296,6 +342,33 @@ class DataLoader:
             mask = preprocessed['type'].str.lower() == 'start'
             if mask.any() and preprocessed.loc[mask, 'max arrival count'].isnull().any():
                 preprocessed.loc[mask, 'max arrival count'] = 20  # Default to 20 tokens
+        
+        # Create columns for condition probabilities
+        # Instead of storing dictionaries (which can cause issues), we'll create explicit columns
+        
+        # First, find all condition probability columns
+        condition_cols = []
+        for col in preprocessed.columns:
+            if 'probability' in col.lower() and 'condition' in col.lower():
+                condition_cols.append(col)
+        
+        # Process all gateway nodes
+        if 'type' in preprocessed.columns:
+            gateway_rows = preprocessed['type'].str.lower().str.contains('gateway|exclusive|inclusive', na=False)
+            
+            # For each gateway node, make sure its condition columns are properly formatted
+            if any(gateway_rows):
+                for idx, row in preprocessed[gateway_rows].iterrows():
+                    for condition_col in condition_cols:
+                        if pd.notna(row.get(condition_col)):
+                            # Extract condition name from column name
+                            parts = condition_col.lower().split('probability')
+                            if len(parts) > 0:
+                                condition_name = parts[0].strip()
+                                
+                                # Create a specific column for this gateway's condition
+                                new_col_name = f"prob_{row['name']}_{condition_name}".replace(' ', '_')
+                                preprocessed.loc[idx, new_col_name] = float(row[condition_col])
         
         logging.info("Preprocessed simulation metrics data")
         return preprocessed

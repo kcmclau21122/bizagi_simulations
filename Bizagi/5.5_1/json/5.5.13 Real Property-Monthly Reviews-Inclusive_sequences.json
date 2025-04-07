@@ -1,0 +1,140 @@
+{
+    "metadata": {
+        "source_file": "5.5.13 Real Property-Monthly Reviews-Inclusive.xpdl",
+        "creation_date": "2025-03-13T15:58:35.352516",
+        "total_sequences": 11
+    },
+    "nodes": [
+        {
+            "id": "983d20d8-3237-4f14-83c4-07302457c76a",
+            "name": "Monthly [Type: Start]",
+            "type": "Start",
+            "arrival interval": 2.0,
+            "max arrival count": 500.0
+        },
+        {
+            "id": "26025e56-9a2e-47a3-b51f-497d21c87407",
+            "name": "Review AM using Asset Change Tracker (5.5.13.1)",
+            "type": "Task",
+            "resource": "Tech",
+            "available resources": 1.0,
+            "avg time": 8.0,
+            "min time": 5.0,
+            "max time": 12.0
+        },
+        {
+            "id": "c69b6146-7bd5-462f-9865-79a90dbf54e6",
+            "name": "Complete /Accurate? [Exclusive Gateway]",
+            "type": "Gateway",
+            "yes": 0.75,
+            "no": 0.25
+        },
+        {
+            "id": "5115501c-098a-4983-be9b-f54396e13e4d",
+            "name": "Note Accuracy in Asset Change Tracker (5.5.13.2)",
+            "type": "Task",
+            "resource": "Tech",
+            "available resources": 1.0,
+            "avg time": 5.0,
+            "min time": 3.0,
+            "max time": 10.0
+        },
+        {
+            "id": "c82befda-97d6-4c97-b0fc-89f3d5a49692",
+            "name": "Work with REO RPO to Correct (5.5.13.3)",
+            "type": "Task",
+            "resource": "Tech",
+            "available resources": 1.0,
+            "avg time": 120.0,
+            "min time": 60.0,
+            "max time": 240.0
+        },
+        {
+            "id": "36668b7b-7686-4303-ab26-b6f518da488c",
+            "name": "Create/Post Journal Entries (5.5.13.4)",
+            "type": "Task",
+            "resource": "Certifier",
+            "available resources": 1.0,
+            "avg time": 10.0,
+            "min time": 5.0,
+            "max time": 15.0
+        },
+        {
+            "id": "a940bfa2-f8e5-4a3f-b277-ea0241a1af97",
+            "name": "Unknown",
+            "type": "Activity Step"
+        },
+        {
+            "id": "9ff64215-67ea-40c9-8172-fe1f4fb7030e",
+            "name": "Create Journal Entries? [Inclusive Gateway]",
+            "type": "Gateway",
+            "yes": 0.6,
+            "no": 0.4
+        },
+        {
+            "id": "11bbf8d1-f060-46c7-a839-63f24d988003",
+            "name": "Inclusive Path 3",
+            "type": "Task",
+            "avg time": 1.0,
+            "min time": 0.5,
+            "max time": 1.5
+        }
+    ],
+    "links": [
+        {
+            "source": "Monthly [Type: Start]",
+            "target": "Review AM using Asset Change Tracker (5.5.13.1) [Type: Activity Step]",
+            "type": "Activity Step"
+        },
+        {
+            "source": "Review AM using Asset Change Tracker (5.5.13.1)",
+            "target": "Complete /Accurate? [Exclusive Gateway] [Type: Activity Step]",
+            "type": "Activity Step"
+        },
+        {
+            "source": "Complete /Accurate?",
+            "target": "Note Accuracy in Asset Change Tracker (5.5.13.2)[Exclusive Gateway] [Type: CONDITION-Yes]",
+            "type": "CONDITION-Yes"
+        },
+        {
+            "source": "Complete /Accurate?",
+            "target": "Work with REO RPO to Correct (5.5.13.3)[Exclusive Gateway] [Type: CONDITION-No]",
+            "type": "CONDITION-No"
+        },
+        {
+            "source": "Work with REO RPO to Correct (5.5.13.3)",
+            "target": "Create Journal Entries? [Inclusive Gateway] [Type: Activity Step]",
+            "type": "Activity Step"
+        },
+        {
+            "source": "Create Journal Entries?",
+            "target": "Create/Post Journal Entries (5.5.13.4)[Exclusive Gateway] [Type: CONDITION-Post]",
+            "type": "CONDITION-Post"
+        },
+        {
+            "source": "Create Journal Entries?",
+            "target": "Note Accuracy in Asset Change Tracker (5.5.13.2)[Exclusive Gateway] [Type: CONDITION-Note Accuracy]",
+            "type": "CONDITION-Note Accuracy"
+        },
+        {
+            "source": "Create Journal Entries?",
+            "target": "Inclusive Path 3[Exclusive Gateway] [Type: CONDITION-Path 3]",
+            "type": "CONDITION-Path 3"
+        },
+        {
+            "source": "Note Accuracy in Asset Change Tracker (5.5.13.2)",
+            "target": "Unknown [Type: Stop]",
+            "type": "Stop"
+        },
+        {
+            "source": "Inclusive Path 3",
+            "target": "Unknown [Type: Stop]",
+            "type": "Stop"
+        },
+        {
+            "source": "Create/Post Journal Entries (5.5.13.4)",
+            "target": "Unknown [Type: Stop]",
+            "type": "Stop"
+        }
+    ]
+}

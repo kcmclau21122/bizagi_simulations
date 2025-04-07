@@ -1,5 +1,6 @@
 import re
 import json
+import logging 
 import pandas as pd
 import networkx as nx
 from networkx.readwrite import json_graph
@@ -15,10 +16,120 @@ class ProcessModelBuilder:
         """Initialize the process model builder."""
         self.process_model = nx.DiGraph()
         self.gateway_types = ["[Exclusive Gateway]", "[Inclusive Gateway]", "[Parallel Gateway]"]
+        self.node_aliases = {}  # Maps normalized node names to original names
         
-# Add this method to the ProcessModel class if it doesn't exist
-# or replace the existing one
+    def build_from_json(self, json_file_path: str, simulation_metrics: pd.DataFrame = None) -> nx.DiGraph:
+        """
+        Build a process model from a JSON file.
+        
+        Args:
+            json_file_path: Path to the JSON file containing process model
+            simulation_metrics: DataFrame containing simulation metrics (optional)
+            
+        Returns:
+            The constructed process model graph
+        """
+        # Load the JSON file
+        try:
+            with open(json_file_path, 'r') as file:
+                data = json.load(file)
+        except Exception as e:
+            logging.error(f"Error loading JSON file {json_file_path}: {str(e)}")
+            # Return an empty graph but at least initialize it
+            self.process_model = nx.DiGraph()
+            return self.process_model
+        
+        # Validate expected structure
+        if 'nodes' not in data or 'links' not in data:
+            logging.error(f"Invalid JSON structure in {json_file_path}: missing 'nodes' or 'links' key")
+            # Return an empty graph but at least initialize it
+            self.process_model = nx.DiGraph()
+            return self.process_model
+        
+        # Create a new directed graph
+        self.process_model = nx.DiGraph()
+        
+        # Add nodes from the JSON data
+        node_count = 0
+        for node in data.get('nodes', []):
+            node_id = node.get('name', node.get('id', ''))
+            if not node_id:
+                continue
+                
+            # Add the node with all its attributes
+            self.process_model.add_node(node_id, **node)
+            node_count += 1
+            
+            # If simulation metrics are provided, merge them in
+            if simulation_metrics is not None:
+                self._add_metrics_to_node(node_id, simulation_metrics)
+        
+        # Add links from the JSON data
+        edge_count = 0
+        for link in data.get('links', []):
+            source = link.get('source', '')
+            target = link.get('target', '')
+            
+            if not source or not target:
+                continue
+                
+            # Strip any type annotations if they exist in source/target
+            source_name = re.split(r"\[", source)[0].strip() if '[' in source else source
+            target_name = re.split(r"\[", target)[0].strip() if '[' in target else target
+            
+            # Add the edge with all its attributes
+            self.process_model.add_edge(source_name, target_name, **link)
+            edge_count += 1
+        
+        # Handle empty or invalid graphs
+        if node_count == 0:
+            logging.warning(f"No valid nodes found in JSON file {json_file_path}")
+        if edge_count == 0:
+            logging.warning(f"No valid edges found in JSON file {json_file_path}")
+        
+        logging.info(f"Built process model from JSON with {node_count} nodes and {edge_count} edges")
+        return self.process_model
 
+        
+    def _add_metrics_to_node(self, node_id: str, simulation_metrics: pd.DataFrame) -> None:
+        """
+        Add simulation metrics to a node.
+        
+        Args:
+            node_id: Node identifier
+            simulation_metrics: DataFrame containing simulation metrics
+        """
+        # Normalize column names
+        simulation_metrics.columns = [str(col).lower() for col in simulation_metrics.columns]
+        
+        # Find the matching row in metrics
+        # First strip any type annotations from node_id if they exist
+        simple_name = self._normalize_node_id(node_id)
+        
+        # Try exact match first
+        attributes_row = simulation_metrics[simulation_metrics['name'].str.lower() == simple_name.lower()]
+        
+        # If no exact match, try partial matching
+        if attributes_row.empty:
+            # Try finding rows where the name is contained within the node_id
+            for idx, row in simulation_metrics.iterrows():
+                row_name = str(row.get('name', '')).lower()
+                if row_name and (row_name in simple_name.lower() or simple_name.lower() in row_name):
+                    attributes_row = simulation_metrics.iloc[[idx]]
+                    break
+        
+        if not attributes_row.empty:
+            # Get the attributes
+            attributes = attributes_row.iloc[0].dropna().to_dict()
+            
+            # Remove redundant keys
+            attributes.pop('type', None)
+            attributes.pop('name', None)
+            
+            # Add the attributes to the node
+            for key, value in attributes.items():
+                self.process_model.nodes[node_id][key] = value
+            
     def get_all_resources(self) -> Dict[str, int]:
         """
         Get all resources defined in the process model with their counts.
@@ -28,7 +139,7 @@ class ProcessModelBuilder:
         """
         resources = {}
         # Scan all nodes for resources
-        for node_id, node_data in self.nodes.items():
+        for node_id, node_data in self.process_model.nodes.items():  # Fixed to use process_model.nodes
             resource = node_data.get('resource')
             if resource:
                 # Get count from node data if available, otherwise use default 1
@@ -92,7 +203,7 @@ class ProcessModelBuilder:
                 edge_type = target_type_match.group(1) if target_type_match else "Activity Step"
                 
             # Add edge to the graph
-            self.process_model.add_edge(source_name, target_name, type=edge_type)
+            self.process_model.add_edge(source, target, type=edge_type)
             
         return self.process_model
         
@@ -140,6 +251,13 @@ class ProcessModelBuilder:
             **attributes
         )
         
+        # Store normalized version in node_aliases
+        norm_name = self._normalize_node_id(node_name)
+        if norm_name != node_name:
+            if norm_name not in self.node_aliases:
+                self.node_aliases[norm_name] = []
+            self.node_aliases[norm_name].append(node_name)
+        
     def save_to_json(self, output_path: str = "process_model.json") -> str:
         """
         Save the process model to a JSON file.
@@ -180,3 +298,17 @@ class ProcessModelBuilder:
             node for node, data in self.process_model.nodes(data=True)
             if data.get('type') == 'Stop'
         ]
+        
+    def _normalize_node_id(self, node_id: str) -> str:
+        """
+        Normalize a node ID by removing type annotations and whitespace.
+        
+        Args:
+            node_id: Node ID to normalize
+            
+        Returns:
+            Normalized node ID
+        """
+        # Remove type annotations like [Type: Start]
+        normalized = re.sub(r'\s*\[.*?\]', '', node_id).strip()
+        return normalized
